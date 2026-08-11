@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-function createServer() {
+function createServer(makeGatewayUrl: string) {
   const server = new McpServer({
     name: "Lead Desk OS Light",
     version: "1.0.0",
@@ -31,10 +31,92 @@ function createServer() {
     },
   );
 
+  server.registerTool(
+    "createCalendarTask",
+    {
+      description:
+        "Creates one 30-minute event in the Lead Desk OS Light Google Calendar. Times use America/Los_Angeles.",
+      inputSchema: z.object({
+        taskTitle: z.string().min(1),
+        startDateTime: z.string().min(1),
+        purpose: z.string().optional(),
+        leadCode: z.string().optional(),
+        executionNotes: z.string().optional(),
+        nextAction: z.string().optional(),
+        calendarRegistry: z.string().optional(),
+      }),
+    },
+    async ({
+      taskTitle,
+      startDateTime,
+      purpose,
+      leadCode,
+      executionNotes,
+      nextAction,
+      calendarRegistry,
+    }) => {
+      const executionId = crypto.randomUUID();
+
+      const response = await fetch(makeGatewayUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stage: "Execute",
+          action: "CreateCalendarEvent",
+          purpose: purpose ?? "",
+          leadCode: leadCode ?? "",
+          workflow: "Calendar",
+          taskTitle,
+          nextAction: nextAction ?? "",
+          executionId,
+          startDateTime,
+          executionNotes: executionNotes ?? "",
+          durationMinutes: 30,
+          calendarRegistry: calendarRegistry ?? "Lead Desk OS Light",
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Calendar gateway failed with HTTP ${response.status}: ${responseText}`,
+            },
+          ],
+        };
+      }
+
+      let result: unknown;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = {
+          success: true,
+          executionId,
+          message: responseText,
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    },
+  );
+
   return server;
 }
-
-const handler = createMcpHandler(createServer);
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
@@ -44,6 +126,14 @@ export default {
     if (authorization !== expectedAuthorization) {
       return new Response("Unauthorized", { status: 401 });
     }
+
+    const makeGatewayUrl = (
+      env as Env & { MAKE_GATEWAY_URL: string }
+    ).MAKE_GATEWAY_URL;
+
+    const handler = createMcpHandler(() =>
+      createServer(makeGatewayUrl),
+    );
 
     return handler(request, env, ctx);
   },
