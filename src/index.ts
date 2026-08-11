@@ -38,6 +38,13 @@ const handler = createMcpHandler(createServer);
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const authorization = request.headers.get("Authorization");
+    const expectedAuthorization = `Bearer ${env.LEAD_DESK_API_KEY}`;
+
+    if (authorization !== expectedAuthorization) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     return handler(request, env, ctx);
   },
 } satisfies ExportedHandler<Env>;
