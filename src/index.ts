@@ -115,6 +115,110 @@ function createServer(makeGatewayUrl: string) {
     },
   );
 
+    server.registerTool(
+    "createNotionOpportunity",
+    {
+      description:
+        "Creates one opportunity in the Lead Desk OS Light Notion data source.",
+      inputSchema: z.object({
+        leadCode: z.string().min(1),
+        workflow: z.enum([
+          "Internet Lead",
+          "General Engagement",
+          "Re-Engagement",
+          "Pricing Inquiry",
+          "Appointment",
+          "Demo/Test Drive",
+          "Negotiation",
+          "Credit",
+          "Contracting",
+          "Delivery",
+          "Two-Way Contact",
+          "Contracted",
+        ]),
+        stage: z.enum([
+          "New Lead",
+          "Two-Way Contact",
+          "Appointment Set",
+          "Showroom Visit",
+          "Demo/Test Drive",
+          "Quote Presented",
+          "Negotiation",
+          "Credit Submitted",
+          "Contracted",
+          "Delivered",
+          "Lost",
+        ]),
+        executionNotes: z.string().optional(),
+        nextAction: z.string().optional(),
+      }),
+    },
+    async ({
+      leadCode,
+      workflow,
+      stage,
+      executionNotes,
+      nextAction,
+    }) => {
+      const executionId = crypto.randomUUID();
+
+      const response = await fetch(makeGatewayUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          stage,
+          action: "CreateNotionOpportunity",
+          purpose: "",
+          leadCode,
+          workflow,
+          taskTitle: "",
+          nextAction: nextAction ?? "",
+          executionId,
+          startDateTime: "",
+          executionNotes: executionNotes ?? "",
+          durationMinutes: 0,
+          calendarRegistry: "",
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Notion gateway failed with HTTP ${response.status}: ${responseText}`,
+            },
+          ],
+        };
+      }
+
+      let result: unknown;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = {
+          success: true,
+          executionId,
+          message: responseText,
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    },
+  );
   return server;
 }
 
