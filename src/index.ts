@@ -32,7 +32,7 @@ function createServer(makeGatewayUrl: string) {
   );
 
   server.registerTool(
-    "createCalendarTask",
+    "createCalendarEvent",
     {
       description:
         "Creates one 30-minute event in the Lead Desk OS Light Google Calendar. Times use America/Los_Angeles.",
