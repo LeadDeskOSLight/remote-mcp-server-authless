@@ -206,7 +206,7 @@ function createServer(makeGatewayUrl: string) {
         },
         body: JSON.stringify({
           stage,
-          action: "CreateNotionOpportunity",
+          action: "createNotionOpportunity",
           purpose: "",
           leadCode,
           workflow,
@@ -238,14 +238,51 @@ function createServer(makeGatewayUrl: string) {
 
       try {
         result = JSON.parse(responseText);
-      } catch {
-        result = {
-          success: true,
+} catch {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
           executionId,
-          message: responseText,
-        };
-      }
+          action: "createNotionOpportunity",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_RESPONSE",
+          message:
+            "The Notion gateway returned an invalid response. Opportunity creation is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
+const gatewayResult = result as Record<string, unknown>;
 
+if (
+  gatewayResult.success !== true ||
+  gatewayResult.executionId !== executionId ||
+  gatewayResult.action !== "createNotionOpportunity" ||
+  gatewayResult.executionStatus !== "EXECUTED"
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action: "createNotionOpportunity",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_CONFIRMATION",
+          message:
+            "The Notion gateway did not provide a valid matching execution confirmation. Opportunity creation is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
       return {
         content: [
           {
