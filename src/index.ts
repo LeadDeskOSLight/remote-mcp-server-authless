@@ -96,13 +96,25 @@ function createServer(makeGatewayUrl: string) {
 
       try {
         result = JSON.parse(responseText);
-      } catch {
-        result = {
-          success: true,
+} catch {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
           executionId,
-          message: responseText,
-        };
-      }
+          action: "createCalendarEvent",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_RESPONSE",
+          message:
+            "The Calendar gateway returned an invalid response. Calendar creation is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
 
       return {
         content: [
