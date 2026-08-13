@@ -115,7 +115,32 @@ function createServer(makeGatewayUrl: string) {
     ],
   };
 }
+      const gatewayResult = result as Record<string, unknown>;
 
+      if (
+        gatewayResult.success !== true ||
+        gatewayResult.executionId !== executionId ||
+        gatewayResult.action !== "createCalendarEvent" ||
+        gatewayResult.executionStatus !== "EXECUTED"
+      ) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                executionId,
+                action: "createCalendarEvent",
+                executionStatus: "FAILED",
+                errorCode: "INVALID_GATEWAY_CONFIRMATION",
+                message:
+                  "The Calendar gateway did not provide a valid matching execution confirmation. Calendar creation is not confirmed.",
+              }),
+            },
+          ],
+        };
+      }
       return {
         content: [
           {
