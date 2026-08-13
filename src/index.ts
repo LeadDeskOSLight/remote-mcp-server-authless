@@ -347,7 +347,7 @@ if (
         },
         body: JSON.stringify({
           stage,
-          action: "UpdateNotionOpportunity",
+          action: "updateNotionOpportunity",
           purpose: "",
           leadCode,
           workflow,
@@ -379,14 +379,51 @@ if (
 
       try {
         result = JSON.parse(responseText);
-      } catch {
-        result = {
-          success: true,
+   } catch {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
           executionId,
-          message: responseText,
-        };
-      }
+          action: "updateNotionOpportunity",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_RESPONSE",
+          message:
+            "The Notion gateway returned an invalid response. Opportunity update is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
+const gatewayResult = result as Record<string, unknown>;
 
+if (
+  gatewayResult.success !== true ||
+  gatewayResult.executionId !== executionId ||
+  gatewayResult.action !== "updateNotionOpportunity" ||
+  gatewayResult.executionStatus !== "EXECUTED"
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action: "updateNotionOpportunity",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_CONFIRMATION",
+          message:
+            "The Notion gateway did not provide a valid matching execution confirmation. Opportunity update is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
       return {
         content: [
           {
