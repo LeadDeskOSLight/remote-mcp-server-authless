@@ -64,7 +64,7 @@ function createServer(makeGatewayUrl: string) {
         },
         body: JSON.stringify({
           stage: "Execute",
-          action: "CreateCalendarEvent",
+          action: "createCalendarEvent",
           purpose: purpose ?? "",
           leadCode: leadCode ?? "",
           workflow: "Calendar",
