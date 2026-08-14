@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "artifactId": "2026-08-14-a75f0495",
+  "artifactType": "source-pinned-cloudflare-worker-runtime",
+  "generatedAt": "2026-08-14T00:00:00-07:00",
+  "source": {
+    "repository": "LeadDeskOSLight/remote-mcp-server-authless",
+    "commitSha": "a75f0495fe629a97c7c6119d582a710210fb4723",
+    "treeSha": "3c9a9dc28b418141044bc0b27e022043a751b287",
+    "commitMessage": "Add validated Notion opportunity lookup tool",
+    "committedAt": "2026-08-14T19:58:10Z",
+    "branchAtCertification": "main"
+  },
+  "runtime": {
+    "platform": "Cloudflare Workers",
+    "entrypoint": "src/index.ts",
+    "workerName": "remote-mcp-server-authless",
+    "compatibilityDate": "2026-07-02",
+    "compatibilityFlags": [
+      "nodejs_compat"
+    ]
+  },
+  "reproducibility": {
+    "level": "source-pinned",
+    "dependencyLockfile": null,
+    "note": "This repository did not contain a dependency lockfile at the certified commit. Source and declared dependency ranges are preserved exactly; dependency resolution is not byte-for-byte reproducible until a lockfile is added and certified."
+  },
+  "files": {
+    "src/index.ts": {
+      "sha256": "c937c56f67b5bf40a9f1df584f4868e47c7778fcb46bc2fa9426c374ae659974",
+      "githubBlobSha": "0d661303c934cca189732dfe0cff3f94c45141c4",
+      "bytes": 18594,
+      "archivePath": "source/src/index.ts"
+    },
+    "package.json": {
+      "sha256": "228ac2cf2c5502b28d9aa4ba92c69e136a23b3222809315fbe6084fb3c05b946",
+      "githubBlobSha": "4bed0cd63fc052be4b7899c2f2c878d4846e68ef",
+      "bytes": 577,
+      "archivePath": "source/package.json"
+    },
+    "wrangler.jsonc": {
+      "sha256": "9ba1d2b0d684e6c71935d23a58f85a93aee96aee1588ea692f3b50eb14d116ef",
+      "githubBlobSha": "40366fff6b2f426aaaa75b1c2057e9af70b4aa11",
+      "bytes": 384,
+      "archivePath": "source/wrangler.jsonc"
+    },
+    "tsconfig.json": {
+      "sha256": "b0d52ef1c906fd201a0efca9bc4cacefcbf84c75d03ce89f3e4bcc05e14525d7",
+      "githubBlobSha": "a5936d8d7d0ef9928a5aa85f4e3d737ac0f59e0b",
+      "bytes": 445,
+      "archivePath": "source/tsconfig.json"
+    }
+  },
+  "previousManifestSha256": null,
+  "chainSequence": 1
+}
