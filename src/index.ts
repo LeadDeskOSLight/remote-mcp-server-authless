@@ -434,6 +434,270 @@ if (
       };
     },
   );
+    server.registerTool(
+    "getNotionOpportunity",
+    {
+      description:
+        "Retrieves the approved fields for one Lead Desk OS Light Notion opportunity identified by its exact lead code.",
+      inputSchema: z.object({
+        leadCode: z.string().trim().min(1),
+      }),
+    },
+    async ({ leadCode }) => {
+      const executionId = crypto.randomUUID();
+      const action = "getNotionOpportunity";
+
+      const failure = (
+        errorCode: string,
+        message: string,
+      ) => ({
+        isError: true,
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              success: false,
+              executionId,
+              action,
+              executionStatus: "FAILED",
+              errorCode,
+              message,
+            }),
+          },
+        ],
+      });
+
+      let response: Response;
+
+      try {
+        response = await fetch(makeGatewayUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            stage: "",
+            action,
+            purpose: "",
+            leadCode,
+            workflow: "",
+            taskTitle: "",
+            nextAction: "",
+            executionId,
+            startDateTime: "",
+            executionNotes: "",
+            durationMinutes: 0,
+            calendarRegistry: "",
+          }),
+        });
+      } catch {
+        return failure(
+          "GATEWAY_CONNECTION_FAILED",
+          "The Notion gateway could not be reached.",
+        );
+      }
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        return failure(
+          "GATEWAY_HTTP_ERROR",
+          `The Notion gateway returned HTTP ${response.status}.`,
+        );
+      }
+
+      let result: unknown;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        return failure(
+          "INVALID_GATEWAY_RESPONSE",
+          "The Notion gateway returned invalid JSON.",
+        );
+      }
+
+      if (
+        typeof result !== "object" ||
+        result === null ||
+        Array.isArray(result)
+      ) {
+        return failure(
+          "INVALID_GATEWAY_RESPONSE",
+          "The Notion gateway returned an invalid response object.",
+        );
+      }
+
+      const gatewayResult = result as Record<string, unknown>;
+
+      if (
+        gatewayResult.executionId !== executionId ||
+        gatewayResult.action !== action
+      ) {
+        return failure(
+          "INVALID_GATEWAY_CONFIRMATION",
+          "The Notion gateway returned a mismatched execution confirmation.",
+        );
+      }
+
+      if (gatewayResult.success === false) {
+        const errorCode = gatewayResult.errorCode;
+        const matchCount = gatewayResult.matchCount;
+
+        const validNotFound =
+          gatewayResult.executionStatus === "FAILED" &&
+          errorCode === "NOT_FOUND" &&
+          matchCount === 0;
+
+        const validDuplicate =
+          gatewayResult.executionStatus === "FAILED" &&
+          errorCode === "DUPLICATE_OR_AMBIGUOUS" &&
+          typeof matchCount === "number" &&
+          matchCount >= 2;
+
+        if (!validNotFound && !validDuplicate) {
+          return failure(
+            "INVALID_GATEWAY_CONFIRMATION",
+            "The Notion gateway returned an invalid failure confirmation.",
+          );
+        }
+
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(gatewayResult),
+            },
+          ],
+        };
+      }
+
+      if (
+        gatewayResult.success !== true ||
+        gatewayResult.executionStatus !== "EXECUTED" ||
+        gatewayResult.matchCount !== 1
+      ) {
+        return failure(
+          "INVALID_GATEWAY_CONFIRMATION",
+          "The Notion gateway did not confirm exactly one opportunity.",
+        );
+      }
+
+      const rawMatches = gatewayResult.matches;
+      const match = Array.isArray(rawMatches)
+        ? rawMatches[0]
+        : rawMatches;
+
+      if (
+        typeof match !== "object" ||
+        match === null ||
+        Array.isArray(match)
+      ) {
+        return failure(
+          "INVALID_GATEWAY_CONFIRMATION",
+          "The Notion gateway did not return one readable opportunity.",
+        );
+      }
+
+      const matchRecord = match as Record<string, unknown>;
+      const rawProperties =
+        matchRecord.properties_value ??
+        matchRecord["Properties Value"];
+
+      if (
+        typeof rawProperties !== "object" ||
+        rawProperties === null ||
+        Array.isArray(rawProperties)
+      ) {
+        return failure(
+          "INVALID_GATEWAY_CONFIRMATION",
+          "The Notion gateway returned invalid opportunity properties.",
+        );
+      }
+
+      const properties = rawProperties as Record<string, unknown>;
+
+      const selectName = (value: unknown): string => {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value)
+        ) {
+          const name = (value as Record<string, unknown>).name;
+          return typeof name === "string" ? name : "";
+        }
+        return "";
+      };
+
+      const plainText = (value: unknown): string => {
+        if (typeof value === "string") return value;
+        if (!Array.isArray(value) || value.length === 0) return "";
+
+        const first = value[0];
+
+        if (
+          typeof first !== "object" ||
+          first === null ||
+          Array.isArray(first)
+        ) {
+          return "";
+        }
+
+        const item = first as Record<string, unknown>;
+
+        if (typeof item.plain_text === "string") {
+          return item.plain_text;
+        }
+
+        const text = item.text;
+
+        if (
+          typeof text === "object" &&
+          text !== null &&
+          !Array.isArray(text)
+        ) {
+          const content = (text as Record<string, unknown>).content;
+          return typeof content === "string" ? content : "";
+        }
+
+        return "";
+      };
+
+      const opportunity = {
+        leadCode: plainText(properties["Lead Code"]),
+        currentWorkflow: selectName(properties["Current Workflow"]),
+        stage: selectName(properties.Stage),
+        executionNotes: plainText(properties["Execution Notes"]),
+        nextAction: plainText(properties["Next Action"]),
+        calendarRegistry: plainText(properties["Calendar Registry"]),
+      };
+
+      if (opportunity.leadCode !== leadCode) {
+        return failure(
+          "INVALID_GATEWAY_CONFIRMATION",
+          "The returned opportunity did not match the requested lead code.",
+        );
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              executionId,
+              action,
+              executionStatus: "EXECUTED",
+              message: "Opportunity retrieved successfully.",
+              matchCount: 1,
+              opportunity,
+            }),
+          },
+        ],
+      };
+    },
+  );
   return server;
 }
 
