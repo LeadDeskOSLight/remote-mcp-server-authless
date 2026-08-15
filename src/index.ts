@@ -2,7 +2,11 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-function createServer(makeGatewayUrl: string) {
+function createServer(
+  makeGatewayUrl: string,
+  makeRuntimeHealthUrl: string,
+  makeRuntimeHealthKey: string
+) {
   const server = new McpServer({
     name: "Lead Desk OS Light",
     version: "1.0.0",
@@ -698,6 +702,173 @@ if (
       };
     },
   );
+  server.registerTool(
+  "initializeLeadDeskRuntime",
+  {
+    description:
+      "Validates the approved Lead Desk OS Light runtime identity and confirms Notion and Calendar readiness.",
+    inputSchema: z.object({}),
+  },
+    async () => {
+  const executionId = crypto.randomUUID();
+  const action = "initializeLeadDeskRuntime";
+  const artifactId = "2026-08-14-a75f0495";
+  const manifestSha256 =
+    "fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf";
+  const requestedAt = new Date().toISOString();
+
+  const response = await fetch(makeRuntimeHealthUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-make-apikey": makeRuntimeHealthKey,
+    },
+    body: JSON.stringify({
+      action,
+      executionId,
+      artifactId,
+      manifestSha256,
+      requestedAt,
+    }),
+  });
+
+  const responseText = await response.text();
+      if (!response.ok) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          errorCode: "RUNTIME_HEALTH_HTTP_ERROR",
+          message: `Runtime health endpoint returned HTTP ${response.status}.`,
+        }),
+      },
+    ],
+  };
+}
+
+let result: unknown;
+
+try {
+  result = JSON.parse(responseText);
+} catch {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          errorCode: "INVALID_RUNTIME_HEALTH_RESPONSE",
+          message: "Runtime health endpoint returned invalid JSON.",
+        }),
+      },
+    ],
+  };
+}
+      if (
+  typeof result !== "object" ||
+  result === null ||
+  Array.isArray(result)
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          errorCode: "INVALID_RUNTIME_HEALTH_RESPONSE",
+          message: "Runtime health endpoint returned an invalid response object.",
+        }),
+      },
+    ],
+  };
+}
+
+const runtimeResult = result as {
+  success?: boolean;
+  executionId?: string;
+  action?: string;
+  runtimeStatus?: string;
+  artifactId?: string;
+  manifestSha256?: string;
+  checks?: {
+    notion?: string;
+    calendar?: string;
+  };
+};
+
+if (
+  runtimeResult.executionId !== executionId ||
+  runtimeResult.action !== action ||
+  runtimeResult.artifactId !== artifactId ||
+  runtimeResult.manifestSha256 !== manifestSha256
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          errorCode: "INVALID_RUNTIME_HEALTH_CONFIRMATION",
+          message: "Runtime health endpoint returned a mismatched confirmation.",
+        }),
+      },
+    ],
+  };
+}
+      if (
+  runtimeResult.success !== true ||
+  runtimeResult.runtimeStatus !== "READY" ||
+  typeof runtimeResult.checks !== "object" ||
+  runtimeResult.checks === null ||
+  runtimeResult.checks.notion !== "READY" ||
+  runtimeResult.checks.calendar !== "READY"
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          errorCode: "RUNTIME_NOT_READY",
+          message: "Runtime health checks did not confirm full readiness.",
+        }),
+      },
+    ],
+  };
+}
+
+return {
+  content: [
+    {
+      type: "text",
+      text: JSON.stringify(runtimeResult),
+    },
+  ],
+};
+        },
+);
   return server;
 }
 
@@ -710,13 +881,23 @@ export default {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const makeGatewayUrl = (
-      env as Env & { MAKE_GATEWAY_URL: string }
-    ).MAKE_GATEWAY_URL;
+const workerEnv = env as Env & {
+  MAKE_GATEWAY_URL: string;
+  MAKE_RUNTIME_HEALTH_URL: string;
+  MAKE_RUNTIME_HEALTH_KEY: string;
+};
 
-    const handler = createMcpHandler(() =>
-      createServer(makeGatewayUrl),
-    );
+const makeGatewayUrl = workerEnv.MAKE_GATEWAY_URL;
+const makeRuntimeHealthUrl = workerEnv.MAKE_RUNTIME_HEALTH_URL;
+const makeRuntimeHealthKey = workerEnv.MAKE_RUNTIME_HEALTH_KEY;
+
+const handler = createMcpHandler(() =>
+  createServer(
+    makeGatewayUrl,
+    makeRuntimeHealthUrl,
+    makeRuntimeHealthKey,
+  ),
+);
 
     return handler(request, env, ctx);
   },
