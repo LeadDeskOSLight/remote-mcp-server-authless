@@ -303,6 +303,12 @@ function createServer(
     {
       description:
         "Tests whether ChatGPT can reach the Lead Desk OS Light MCP server.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
       inputSchema: z.object({
         message: z.string().optional(),
       }),
@@ -326,6 +332,12 @@ function createServer(
     {
       description:
         "Creates one 30-minute event in the Lead Desk OS Light Google Calendar. Times use America/Los_Angeles.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
         taskTitle: z.string().min(1),
@@ -455,6 +467,12 @@ function createServer(
     {
       description:
         "Creates one opportunity in the Lead Desk OS Light Notion data source.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
         leadCode: z.string().min(1),
@@ -669,6 +687,12 @@ if (
     {
       description:
         "Updates one existing Lead Desk OS Light Notion opportunity identified by its exact lead code.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
         leadCode: z.string().min(1),
@@ -818,6 +842,12 @@ if (
     {
       description:
         "Retrieves the approved fields for one Lead Desk OS Light Notion opportunity identified by its exact lead code.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
         leadCode: z.string().trim().min(1),
@@ -1086,6 +1116,12 @@ if (
   {
     description:
       "Validates the approved Lead Desk OS Light runtime identity and confirms Notion and Calendar readiness.",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
     inputSchema: z.object({
       requestedOperatingMode: z.literal("PRODUCTION"),
       clientTimeZone: z.literal("America/Los_Angeles"),
