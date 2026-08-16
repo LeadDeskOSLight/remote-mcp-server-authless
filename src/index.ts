@@ -264,9 +264,73 @@ function createServer(
 const gatewayResult = result as Record<string, unknown>;
 
 if (
-  gatewayResult.success !== true ||
   gatewayResult.executionId !== executionId ||
-  gatewayResult.action !== "createNotionOpportunity" ||
+  gatewayResult.action !== "createNotionOpportunity"
+) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action: "createNotionOpportunity",
+          executionStatus: "FAILED",
+          errorCode: "INVALID_GATEWAY_CONFIRMATION",
+          message:
+            "The Notion gateway returned a mismatched execution confirmation. Opportunity creation is not confirmed.",
+        }),
+      },
+    ],
+  };
+}
+
+if (gatewayResult.success === false) {
+  const validAlreadyExists =
+    gatewayResult.executionStatus === "REJECTED" &&
+    gatewayResult.errorCode === "OPPORTUNITY_ALREADY_EXISTS" &&
+    gatewayResult.matchCount === 1;
+
+  const validDuplicateLeadCode =
+    gatewayResult.executionStatus === "REJECTED" &&
+    gatewayResult.errorCode === "DUPLICATE_LEAD_CODE" &&
+    typeof gatewayResult.matchCount === "number" &&
+    gatewayResult.matchCount >= 2;
+
+  if (!validAlreadyExists && !validDuplicateLeadCode) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            success: false,
+            executionId,
+            action: "createNotionOpportunity",
+            executionStatus: "FAILED",
+            errorCode: "INVALID_GATEWAY_CONFIRMATION",
+            message:
+              "The Notion gateway returned an invalid rejection confirmation. Opportunity creation is not confirmed.",
+          }),
+        },
+      ],
+    };
+  }
+
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(gatewayResult),
+      },
+    ],
+  };
+}
+
+if (
+  gatewayResult.success !== true ||
   gatewayResult.executionStatus !== "EXECUTED"
 ) {
   return {
@@ -287,11 +351,12 @@ if (
     ],
   };
 }
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(result),
+            text: JSON.stringify(gatewayResult),
           },
         ],
       };
