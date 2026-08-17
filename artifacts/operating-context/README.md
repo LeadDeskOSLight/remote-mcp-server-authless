@@ -2,11 +2,11 @@
 
 This directory preserves immutable, reviewable Lead Desk OS Light sales-assistant policy artifacts.
 
-## Active version 1.0.3
+## Active version 1.0.4
 
-- Policy version: `1.0.3`
-- Policy SHA-256: `e0f65bbbc3b69c620cf57b25bb60ac9b05570b88a4c7cdf1cd5fc1765d11c946`
+- Policy version: `1.0.4`
+- Policy SHA-256: `2d8b9fb83ab9865b75043a77f1a4d0c6f553d1e43b627b17000d3fa41e6b1279`
 - Content type: `text/markdown`
-- Hash-chain sequence: `4`
+- Hash-chain sequence: `5`
 
-The SHA-256 is calculated over the exact UTF-8 bytes of the `policyMarkdown` value in `1.0.3/operating-context.json`. Run `npm run validate:operating-context` before review or deployment.
+The SHA-256 is calculated over the exact UTF-8 bytes of the `policyMarkdown` value in `1.0.4/operating-context.json`. Run `npm run validate:operating-context` before review or deployment.
