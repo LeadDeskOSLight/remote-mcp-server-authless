@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
+import operatingContextArtifact from "../artifacts/operating-context/1.0.0/operating-context.json";
 
 const RUNTIME_ARTIFACT_ID = "2026-08-14-a75f0495";
 const RUNTIME_MANIFEST_SHA256 =
@@ -8,12 +9,22 @@ const RUNTIME_MANIFEST_SHA256 =
 const RUNTIME_VERSION = "1.0.0";
 const RUNTIME_TIME_ZONE = "America/Los_Angeles";
 const MAX_PERMIT_LIFETIME_MS = 60 * 60 * 1000;
+const OPERATING_CONTEXT_SCHEMA_VERSION = 1;
+const OPERATING_CONTEXT_VERSION = "1.0.0";
+const OPERATING_CONTEXT_SHA256 =
+  "2bedaef81202e88e60338740e00e2e4cb0a9abe6feb929e753a18d1dd2277a8e";
+
+type OperatingContextValidation =
+  | { ok: true }
+  | { ok: false; errorCode: string; message: string };
 
 type RuntimePermitClaims = {
   version: 1;
   runtimeVersion: string;
   artifactId: string;
   manifestSha256: string;
+  operatingContextVersion: string;
+  operatingContextSha256: string;
   operatingMode: "PRODUCTION";
   readiness: "READY";
   businessDate: string;
@@ -27,6 +38,58 @@ type PermitValidation =
   | { ok: false; errorCode: string; message: string };
 
 const permitTextEncoder = new TextEncoder();
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", permitTextEncoder.encode(value)),
+  );
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+async function validateOperatingContext(): Promise<OperatingContextValidation> {
+  if (
+    operatingContextArtifact.schemaVersion !== OPERATING_CONTEXT_SCHEMA_VERSION ||
+    operatingContextArtifact.operatingContextVersion !==
+      OPERATING_CONTEXT_VERSION ||
+    operatingContextArtifact.operatingContextSha256 !==
+      OPERATING_CONTEXT_SHA256 ||
+    operatingContextArtifact.contentType !== "text/markdown" ||
+    !operatingContextArtifact.policyMarkdown.trim()
+  ) {
+    return {
+      ok: false,
+      errorCode: "OPERATING_CONTEXT_INVALID",
+      message: "The approved sales-assistant operating context is unavailable.",
+    };
+  }
+
+  if (
+    !operatingContextArtifact.requiredSections.every((section) =>
+      operatingContextArtifact.policyMarkdown.includes(section),
+    )
+  ) {
+    return {
+      ok: false,
+      errorCode: "OPERATING_CONTEXT_INCOMPLETE",
+      message: "The approved sales-assistant operating context is incomplete.",
+    };
+  }
+
+  if (
+    (await sha256Hex(operatingContextArtifact.policyMarkdown)) !==
+    OPERATING_CONTEXT_SHA256
+  ) {
+    return {
+      ok: false,
+      errorCode: "OPERATING_CONTEXT_INTEGRITY_MISMATCH",
+      message: "The sales-assistant operating context failed integrity validation.",
+    };
+  }
+
+  return { ok: true };
+}
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let binary = "";
@@ -135,6 +198,8 @@ async function issueRuntimePermit(
     runtimeVersion: RUNTIME_VERSION,
     artifactId: RUNTIME_ARTIFACT_ID,
     manifestSha256: RUNTIME_MANIFEST_SHA256,
+    operatingContextVersion: OPERATING_CONTEXT_VERSION,
+    operatingContextSha256: OPERATING_CONTEXT_SHA256,
     operatingMode: "PRODUCTION",
     readiness: "READY",
     businessDate: losAngelesBusinessDate(now),
@@ -206,7 +271,9 @@ async function validateRuntimePermit(
       claims.version !== 1 ||
       claims.runtimeVersion !== RUNTIME_VERSION ||
       claims.artifactId !== RUNTIME_ARTIFACT_ID ||
-      claims.manifestSha256 !== RUNTIME_MANIFEST_SHA256
+      claims.manifestSha256 !== RUNTIME_MANIFEST_SHA256 ||
+      claims.operatingContextVersion !== OPERATING_CONTEXT_VERSION ||
+      claims.operatingContextSha256 !== OPERATING_CONTEXT_SHA256
     ) {
       return {
         ok: false,
@@ -964,7 +1031,8 @@ if (
 
         const validDuplicate =
           gatewayResult.executionStatus === "FAILED" &&
-          errorCode === "DUPLICATE_OR_AMBIGUOUS" &&
+          (errorCode === "DUPLICATE_LEAD_CODE" ||
+            errorCode === "DUPLICATE_OR_AMBIGUOUS") &&
           typeof matchCount === "number" &&
           matchCount >= 2;
 
@@ -980,7 +1048,16 @@ if (
           content: [
             {
               type: "text",
-              text: JSON.stringify(gatewayResult),
+              text: JSON.stringify(
+                validDuplicate
+                  ? {
+                      ...gatewayResult,
+                      errorCode: "DUPLICATE_LEAD_CODE",
+                      message:
+                        "Multiple opportunities share the requested lead code. No record was selected.",
+                    }
+                  : gatewayResult,
+              ),
             },
           ],
         };
@@ -1115,7 +1192,7 @@ if (
   "initializeLeadDeskRuntime",
   {
     description:
-      "Validates the approved Lead Desk OS Light runtime identity and confirms Notion and Calendar readiness.",
+      "Starts Lead Desk OS Light for a fresh conversation by validating technical readiness, installing the complete approved Sales Assistant Operating Context, establishing daily session context, and issuing a runtime permit only when both readiness dimensions are READY.",
     annotations: {
       readOnlyHint: true,
       destructiveHint: false,
@@ -1133,6 +1210,10 @@ if (
   const artifactId = RUNTIME_ARTIFACT_ID;
   const manifestSha256 = RUNTIME_MANIFEST_SHA256;
   const requestedAt = new Date().toISOString();
+  const operatingContextValidation = await validateOperatingContext();
+  const operationalContextStatus = operatingContextValidation.ok
+    ? "READY"
+    : "NOT_READY";
 
   if (!runtimePermitSigningKey) {
     return {
@@ -1145,6 +1226,8 @@ if (
             executionId,
             action,
             runtimeStatus: "NOT_READY",
+            technicalReadiness: "NOT_READY",
+            operationalContextStatus,
             errorCode: "RUNTIME_PERMIT_CONFIGURATION_ERROR",
             message: "Runtime permit signing is not configured.",
           }),
@@ -1180,6 +1263,8 @@ if (
           executionId,
           action,
           runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
           errorCode: "RUNTIME_HEALTH_HTTP_ERROR",
           message: `Runtime health endpoint returned HTTP ${response.status}.`,
         }),
@@ -1203,6 +1288,8 @@ try {
           executionId,
           action,
           runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
           errorCode: "INVALID_RUNTIME_HEALTH_RESPONSE",
           message: "Runtime health endpoint returned invalid JSON.",
         }),
@@ -1225,6 +1312,8 @@ try {
           executionId,
           action,
           runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
           errorCode: "INVALID_RUNTIME_HEALTH_RESPONSE",
           message: "Runtime health endpoint returned an invalid response object.",
         }),
@@ -1262,6 +1351,8 @@ if (
           executionId,
           action,
           runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
           errorCode: "INVALID_RUNTIME_HEALTH_CONFIRMATION",
           message: "Runtime health endpoint returned a mismatched confirmation.",
         }),
@@ -1287,8 +1378,31 @@ if (
           executionId,
           action,
           runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
           errorCode: "RUNTIME_NOT_READY",
           message: "Runtime health checks did not confirm full readiness.",
+        }),
+      },
+    ],
+  };
+}
+
+if (!operatingContextValidation.ok) {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          technicalReadiness: "READY",
+          operationalContextStatus: "NOT_READY",
+          errorCode: operatingContextValidation.errorCode,
+          message: operatingContextValidation.message,
         }),
       },
     ],
@@ -1307,7 +1421,20 @@ return {
         ...runtimeResult,
         requestedOperatingMode,
         clientTimeZone,
+        runtimeStatus: "READY",
+        technicalReadiness: "READY",
+        operationalContextStatus: "READY",
         businessDate: claims.businessDate,
+        timeZone: RUNTIME_TIME_ZONE,
+        operatingContext: {
+          schemaVersion: operatingContextArtifact.schemaVersion,
+          operatingContextVersion:
+            operatingContextArtifact.operatingContextVersion,
+          operatingContextSha256:
+            operatingContextArtifact.operatingContextSha256,
+          contentType: operatingContextArtifact.contentType,
+          policyMarkdown: operatingContextArtifact.policyMarkdown,
+        },
         permitIssuedAt: new Date(claims.issuedAt * 1000).toISOString(),
         permitExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
         runtimePermit,
@@ -1322,19 +1449,19 @@ return {
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const workerEnv = env as Env & {
+      LEAD_DESK_API_KEY: string;
+      MAKE_GATEWAY_URL: string;
+      MAKE_RUNTIME_HEALTH_URL: string;
+      MAKE_RUNTIME_HEALTH_KEY: string;
+      LEAD_DESK_RUNTIME_SIGNING_KEY: string;
+    };
     const authorization = request.headers.get("Authorization");
-    const expectedAuthorization = `Bearer ${env.LEAD_DESK_API_KEY}`;
+    const expectedAuthorization = `Bearer ${workerEnv.LEAD_DESK_API_KEY}`;
 
     if (authorization !== expectedAuthorization) {
       return new Response("Unauthorized", { status: 401 });
     }
-
-const workerEnv = env as Env & {
-  MAKE_GATEWAY_URL: string;
-  MAKE_RUNTIME_HEALTH_URL: string;
-  MAKE_RUNTIME_HEALTH_KEY: string;
-  LEAD_DESK_RUNTIME_SIGNING_KEY: string;
-};
 
 const makeGatewayUrl = workerEnv.MAKE_GATEWAY_URL;
 const makeRuntimeHealthUrl = workerEnv.MAKE_RUNTIME_HEALTH_URL;

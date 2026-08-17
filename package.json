@@ -8,6 +8,7 @@
 		"format": "oxfmt --write .",
 		"lint:fix": "oxlint --fix",
 		"start": "wrangler dev",
+		"validate:operating-context": "node scripts/validate-operating-context.mjs",
 		"cf-typegen": "wrangler types",
 		"type-check": "tsc --noEmit"
 	},
