@@ -108,6 +108,7 @@ async function validateOperatingContext(): Promise<OperatingContextValidation> {
 
 function createServer(
   makeGatewayUrl: string,
+  makeGatewayKey: string,
   makeRuntimeHealthUrl: string,
   makeRuntimeHealthKey: string,
   runtimePermitSigningKey: string,
@@ -135,7 +136,10 @@ function createServer(
     try {
       response = await fetch(makeGatewayUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-make-apikey": makeGatewayKey,
+        },
         body: JSON.stringify({
           stage: "", action: "getNotionOpportunity", purpose: "", leadCode,
           workflow: "", taskTitle: "", nextAction: "", executionId,
@@ -281,6 +285,7 @@ function createServer(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
           stage: "Execute",
@@ -429,6 +434,7 @@ function createServer(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
           stage,
@@ -650,6 +656,7 @@ if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
           action: "updateNotionOpportunity",
@@ -805,6 +812,7 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-make-apikey": makeGatewayKey,
           },
           body: JSON.stringify({
             stage: "",
@@ -1067,6 +1075,25 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
   const operationalContextStatus = operatingContextValidation.ok
     ? "READY"
     : "NOT_READY";
+
+  if (!makeGatewayKey) {
+    return {
+      isError: true,
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          technicalReadiness: "NOT_READY",
+          operationalContextStatus,
+          errorCode: "MAKE_GATEWAY_AUTH_CONFIGURATION_ERROR",
+          message: "The certified action gateway authentication key is not configured.",
+        }),
+      }],
+    };
+  }
 
   if (!runtimePermitSigningKey) {
     return {
@@ -1381,6 +1408,7 @@ export default {
     const workerEnv = env as Env & {
       LEAD_DESK_API_KEY: string;
       MAKE_GATEWAY_URL: string;
+      MAKE_GATEWAY_KEY: string;
       MAKE_RUNTIME_HEALTH_URL: string;
       MAKE_RUNTIME_HEALTH_KEY: string;
       LEAD_DESK_RUNTIME_SIGNING_KEY: string;
@@ -1393,6 +1421,7 @@ export default {
     }
 
 const makeGatewayUrl = workerEnv.MAKE_GATEWAY_URL;
+const makeGatewayKey = workerEnv.MAKE_GATEWAY_KEY;
 const makeRuntimeHealthUrl = workerEnv.MAKE_RUNTIME_HEALTH_URL;
 const makeRuntimeHealthKey = workerEnv.MAKE_RUNTIME_HEALTH_KEY;
 const runtimePermitSigningKey = workerEnv.LEAD_DESK_RUNTIME_SIGNING_KEY;
@@ -1400,6 +1429,7 @@ const runtimePermitSigningKey = workerEnv.LEAD_DESK_RUNTIME_SIGNING_KEY;
 const handler = createMcpHandler(() =>
   createServer(
     makeGatewayUrl,
+    makeGatewayKey,
     makeRuntimeHealthUrl,
     makeRuntimeHealthKey,
     runtimePermitSigningKey,

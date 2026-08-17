@@ -41,4 +41,6 @@ test("MCP contract excludes prohibited workflows and fixes Calendar reporting/ro
   assert.ok(source.includes("Fresh exact Lead Code preflight could not be verified."));
   assert.ok(source.includes('verificationStatus: "VERIFIED_SUCCESS"'));
   assert.ok(source.includes("changed and unchanged approved fields"));
+  assert.ok(source.includes('"x-make-apikey": makeGatewayKey'));
+  assert.ok(source.includes("MAKE_GATEWAY_AUTH_CONFIGURATION_ERROR"));
 });
