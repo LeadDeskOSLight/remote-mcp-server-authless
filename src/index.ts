@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
-import operatingContextArtifact from "../artifacts/operating-context/1.0.1/operating-context.json";
+import operatingContextArtifact from "../artifacts/operating-context/1.0.2/operating-context.json";
 
 const RUNTIME_ARTIFACT_ID = "2026-08-14-a75f0495";
 const RUNTIME_MANIFEST_SHA256 =
@@ -10,9 +10,9 @@ const RUNTIME_VERSION = "1.0.0";
 const RUNTIME_TIME_ZONE = "America/Los_Angeles";
 const MAX_PERMIT_LIFETIME_MS = 60 * 60 * 1000;
 const OPERATING_CONTEXT_SCHEMA_VERSION = 1;
-const OPERATING_CONTEXT_VERSION = "1.0.1";
+const OPERATING_CONTEXT_VERSION = "1.0.2";
 const OPERATING_CONTEXT_SHA256 =
-  "31ca873ab0454c559405d943cc51b8ca91fed4aee209cd0e4ea4507bb33d8eda";
+  "a10ddae9c1f34eab3200cdf849dcba8726566a773b0fa1e06b3a1dfc68dfbd31";
 const DAILY_SESSION_CONTEXT_VERSION = "1.0.0";
 
 type OperatingContextValidation =
