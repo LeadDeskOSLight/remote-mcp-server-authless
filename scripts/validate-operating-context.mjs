@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 const artifactPath = new URL(
-	"../artifacts/operating-context/1.0.2/operating-context.json",
+	"../artifacts/operating-context/1.0.3/operating-context.json",
 	import.meta.url,
 );
 const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
@@ -14,8 +14,8 @@ const hashChain = readFileSync(hashChainPath, "utf8")
 
 const expected = {
 	schemaVersion: 1,
-	operatingContextVersion: "1.0.2",
-	operatingContextSha256: "a10ddae9c1f34eab3200cdf849dcba8726566a773b0fa1e06b3a1dfc68dfbd31",
+	operatingContextVersion: "1.0.3",
+	operatingContextSha256: "e0f65bbbc3b69c620cf57b25bb60ac9b05570b88a4c7cdf1cd5fc1765d11c946",
 	contentType: "text/markdown",
 };
 
