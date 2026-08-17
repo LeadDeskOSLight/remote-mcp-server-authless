@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
-import operatingContextArtifact from "../artifacts/operating-context/1.0.4/operating-context.json";
+import operatingContextArtifact from "../artifacts/operating-context/1.0.5/operating-context.json";
+import { isValidLosAngelesDateTime } from "./calendar-time";
 import {
   OPERATING_CONTEXT_SHA256,
   OPERATING_CONTEXT_VERSION,
@@ -116,6 +117,68 @@ function createServer(
     version: RUNTIME_VERSION,
   });
 
+  type ApprovedOpportunity = {
+    leadCode: string;
+    currentWorkflow: string;
+    stage: string;
+    executionNotes: string;
+    nextAction: string;
+  };
+
+  const lookupForVerification = async (leadCode: string): Promise<{
+    matchCount: number;
+    opportunity?: ApprovedOpportunity;
+    errorCode?: string;
+  }> => {
+    const executionId = crypto.randomUUID();
+    let response: Response;
+    try {
+      response = await fetch(makeGatewayUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage: "", action: "getNotionOpportunity", purpose: "", leadCode,
+          workflow: "", taskTitle: "", nextAction: "", executionId,
+          startDateTime: "", executionNotes: "", durationMinutes: 0,
+          calendarRegistry: "",
+        }),
+      });
+    } catch { return { matchCount: -1, errorCode: "GATEWAY_CONNECTION_FAILED" }; }
+    if (!response.ok) return { matchCount: -1, errorCode: "GATEWAY_HTTP_ERROR" };
+    let result: Record<string, unknown>;
+    try { result = JSON.parse(await response.text()) as Record<string, unknown>; }
+    catch { return { matchCount: -1, errorCode: "INVALID_GATEWAY_RESPONSE" }; }
+    if (result.executionId !== executionId || result.action !== "getNotionOpportunity")
+      return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+    if (result.success === false) {
+      if (result.errorCode === "NOT_FOUND" && result.matchCount === 0) return { matchCount: 0 };
+      if ((result.errorCode === "DUPLICATE_LEAD_CODE" || result.errorCode === "DUPLICATE_OR_AMBIGUOUS") && typeof result.matchCount === "number" && result.matchCount >= 2)
+        return { matchCount: result.matchCount };
+      return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+    }
+    if (result.success !== true || result.executionStatus !== "EXECUTED" || result.matchCount !== 1)
+      return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+    const raw = Array.isArray(result.matches) ? result.matches[0] : result.matches;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+    const properties = (raw as Record<string, unknown>).properties_value ?? (raw as Record<string, unknown>)["Properties Value"];
+    if (!properties || typeof properties !== "object" || Array.isArray(properties)) return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+    const p = properties as Record<string, unknown>;
+    const select = (value: unknown) => typeof value === "object" && value !== null && !Array.isArray(value) && typeof (value as Record<string, unknown>).name === "string" ? (value as Record<string, unknown>).name as string : "";
+    const text = (value: unknown) => {
+      if (typeof value === "string") return value;
+      if (!Array.isArray(value) || !value[0] || typeof value[0] !== "object") return "";
+      const item = value[0] as Record<string, unknown>;
+      if (typeof item.plain_text === "string") return item.plain_text;
+      const nested = item.text;
+      return nested && typeof nested === "object" && typeof (nested as Record<string, unknown>).content === "string" ? (nested as Record<string, unknown>).content as string : "";
+    };
+    const opportunity = {
+      leadCode: text(p["Lead Code"]), currentWorkflow: select(p["Current Workflow"]),
+      stage: select(p.Stage), executionNotes: text(p["Execution Notes"]), nextAction: text(p["Next Action"]),
+    };
+    return opportunity.leadCode === leadCode ? { matchCount: 1, opportunity } : { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
+  };
+
   const requireRuntimePermit = async (
     runtimePermit: string,
     action: string,
@@ -187,7 +250,10 @@ function createServer(
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
         taskTitle: z.string().min(1),
-        startDateTime: z.string().min(1),
+        startDateTime: z.string().refine(isValidLosAngelesDateTime, {
+          message:
+            "Use an RFC 3339 timestamp whose explicit offset matches America/Los_Angeles; nonexistent or mismatched DST times are rejected.",
+        }),
         purpose: z.string().optional(),
         leadCode: z.string().optional(),
         executionNotes: z.string().optional(),
@@ -347,6 +413,16 @@ function createServer(
       );
       if (permitError) return permitError;
 
+      const preflight = await lookupForVerification(leadCode);
+      if (preflight.errorCode) return {
+        isError: true,
+        content: [{ type: "text", text: JSON.stringify({ success: false, action: "createNotionOpportunity", executionStatus: "REJECTED", errorCode: preflight.errorCode, message: "Fresh exact Lead Code preflight could not be verified. No create was attempted." }) }],
+      };
+      if (preflight.matchCount !== 0) return {
+        isError: true,
+        content: [{ type: "text", text: JSON.stringify({ success: false, action: "createNotionOpportunity", executionStatus: "REJECTED", errorCode: preflight.matchCount === 1 ? "OPPORTUNITY_ALREADY_EXISTS" : "DUPLICATE_LEAD_CODE", matchCount: preflight.matchCount, message: "Create requires exactly zero fresh Lead Code matches. No create was attempted." }) }],
+      };
+
       const executionId = crypto.randomUUID();
 
       const response = await fetch(makeGatewayUrl, {
@@ -498,11 +574,27 @@ if (
   };
 }
 
+const verifiedCreate = await lookupForVerification(leadCode);
+const expectedCreate = {
+  leadCode,
+  currentWorkflow: workflow,
+  stage,
+  executionNotes: executionNotes ?? "",
+  nextAction: nextAction ?? "",
+};
+if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
+  Object.entries(expectedCreate).some(([key, value]) => verifiedCreate.opportunity?.[key as keyof ApprovedOpportunity] !== value)) {
+  return {
+    isError: true,
+    content: [{ type: "text", text: JSON.stringify({ success: false, executionId, action: "createNotionOpportunity", executionStatus: "EXECUTED_UNVERIFIED", errorCode: verifiedCreate.errorCode ?? "READ_BACK_MISMATCH", message: "Create executed, but fresh read-back did not match every expected field. Do not retry automatically." }) }],
+  };
+}
+
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(gatewayResult),
+            text: JSON.stringify({ ...gatewayResult, executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: verifiedCreate.opportunity }),
           },
         ],
       };
@@ -545,6 +637,12 @@ if (
         "updateNotionOpportunity",
       );
       if (permitError) return permitError;
+
+      const beforeUpdate = await lookupForVerification(leadCode);
+      if (beforeUpdate.matchCount !== 1 || !beforeUpdate.opportunity) return {
+        isError: true,
+        content: [{ type: "text", text: JSON.stringify({ success: false, action: "updateNotionOpportunity", executionStatus: "REJECTED", errorCode: beforeUpdate.errorCode ?? (beforeUpdate.matchCount === 0 ? "NOT_FOUND" : "DUPLICATE_LEAD_CODE"), matchCount: beforeUpdate.matchCount, message: "Update requires exactly one fresh Lead Code match. No update was attempted." }) }],
+      };
 
       const executionId = crypto.randomUUID();
 
@@ -632,11 +730,26 @@ if (
     ],
   };
 }
+const afterUpdate = await lookupForVerification(leadCode);
+const expectedUpdate: ApprovedOpportunity = {
+  ...beforeUpdate.opportunity,
+  ...(workflow !== undefined ? { currentWorkflow: workflow } : {}),
+  ...(stage !== undefined ? { stage } : {}),
+  ...(executionNotes !== undefined ? { executionNotes } : {}),
+  ...(nextAction !== undefined ? { nextAction } : {}),
+};
+if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
+  Object.entries(expectedUpdate).some(([key, value]) => afterUpdate.opportunity?.[key as keyof ApprovedOpportunity] !== value)) {
+  return {
+    isError: true,
+    content: [{ type: "text", text: JSON.stringify({ success: false, executionId, action: "updateNotionOpportunity", executionStatus: "EXECUTED_UNVERIFIED", errorCode: afterUpdate.errorCode ?? "READ_BACK_MISMATCH", message: "Update executed, but fresh read-back did not match changed and unchanged approved fields. Do not retry automatically." }) }],
+  };
+}
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(result),
+            text: JSON.stringify({ ...gatewayResult, executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: afterUpdate.opportunity }),
           },
         ],
       };

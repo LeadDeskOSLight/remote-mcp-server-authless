@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const artifact = JSON.parse(readFileSync(new URL("../artifacts/operating-context/1.0.4/operating-context.json", import.meta.url), "utf8"));
+const artifact = JSON.parse(readFileSync(new URL("../artifacts/operating-context/1.0.5/operating-context.json", import.meta.url), "utf8"));
 const policy: string = artifact.policyMarkdown;
 
 test("complete approved context has integrity and late as well as early sections", () => {
@@ -15,7 +15,7 @@ test("complete approved context has integrity and late as well as early sections
 test("distributed initialization regression probes are all present", () => {
   const probes = [
     "Co-Video with a deadline exactly one hour after the initial-outreach timing anchor",
-    "Schedule the Day 2 follow-up Calendar recommendation exactly 24 hours",
+    "Schedule the Day 2 follow-up Calendar recommendation exactly 24 elapsed hours",
     "Preparation: ChatGPT reasons from appointment purpose",
     "must automatically provide the recommended communication content",
     "Mo's explicit current `Notes:`",
@@ -38,4 +38,7 @@ test("MCP contract excludes prohibited workflows and fixes Calendar reporting/ro
   assert.ok(source.includes('calendarRegistry: "Lead Desk OS Light"'));
   assert.ok(source.includes('executionStatus: "EXECUTED_UNVERIFIED"'));
   assert.ok(source.includes("At least one non-empty approved field change is required."));
+  assert.ok(source.includes("Fresh exact Lead Code preflight could not be verified."));
+  assert.ok(source.includes('verificationStatus: "VERIFIED_SUCCESS"'));
+  assert.ok(source.includes("changed and unchanged approved fields"));
 });

@@ -3,9 +3,9 @@ export const RUNTIME_MANIFEST_SHA256 =
   "fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf";
 export const RUNTIME_VERSION = "1.0.0";
 export const RUNTIME_TIME_ZONE = "America/Los_Angeles";
-export const OPERATING_CONTEXT_VERSION = "1.0.4";
+export const OPERATING_CONTEXT_VERSION = "1.0.5";
 export const OPERATING_CONTEXT_SHA256 =
-  "2d8b9fb83ab9865b75043a77f1a4d0c6f553d1e43b627b17000d3fa41e6b1279";
+  "3d37919bd06c135e36d0b99c50df0041c940db26bde0af7000e6b0ec2c240e82";
 export const MAX_PERMIT_LIFETIME_MS = 60 * 60 * 1000;
 
 export type RuntimePermitClaims = {
