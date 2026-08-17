@@ -10,7 +10,8 @@
 		"start": "wrangler dev",
 		"validate:operating-context": "node scripts/validate-operating-context.mjs",
 		"cf-typegen": "wrangler types",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"test": "node --experimental-strip-types --test tests/*.test.ts"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "1.30.0",

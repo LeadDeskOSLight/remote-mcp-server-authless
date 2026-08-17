@@ -2,40 +2,53 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 import operatingContextArtifact from "../artifacts/operating-context/1.0.4/operating-context.json";
+import {
+  OPERATING_CONTEXT_SHA256,
+  OPERATING_CONTEXT_VERSION,
+  RUNTIME_ARTIFACT_ID,
+  RUNTIME_MANIFEST_SHA256,
+  RUNTIME_TIME_ZONE,
+  RUNTIME_VERSION,
+  issueContextChallenge,
+  issueRuntimePermit,
+  validateContextChallenge,
+  validateRuntimePermit,
+} from "./runtime-permit";
 
-const RUNTIME_ARTIFACT_ID = "2026-08-14-a75f0495";
-const RUNTIME_MANIFEST_SHA256 =
-  "fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf";
-const RUNTIME_VERSION = "1.0.0";
-const RUNTIME_TIME_ZONE = "America/Los_Angeles";
-const MAX_PERMIT_LIFETIME_MS = 60 * 60 * 1000;
 const OPERATING_CONTEXT_SCHEMA_VERSION = 1;
-const OPERATING_CONTEXT_VERSION = "1.0.4";
-const OPERATING_CONTEXT_SHA256 =
-  "2d8b9fb83ab9865b75043a77f1a4d0c6f553d1e43b627b17000d3fa41e6b1279";
 const DAILY_SESSION_CONTEXT_VERSION = "1.0.0";
+const LIGHT_WORKFLOWS = [
+  "Internet Lead", "General Engagement", "Re-Engagement", "Pricing Inquiry",
+  "Appointment", "Demo/Test Drive", "Negotiation", "Credit", "Contracting", "Delivery",
+] as const;
+const LIGHT_STAGES = [
+  "New Lead", "Two-Way Contact", "Appointment Set", "Showroom Visit", "Demo/Test Drive",
+  "Quote Presented", "Negotiation", "Credit Submitted", "Contracted", "Delivered", "Lost",
+] as const;
+
+const contextAttestationSchema = z.object({
+  internetLeadCadence: z.literal(
+    "Co-Video at anchor+1h; Day 2 at anchor+24h; Days 3-7 at 24h intervals; each is a fixed 30-minute Calendar candidate; meaningful response ends cadence",
+  ),
+  appointmentPreparation: z.literal(
+    "Evaluate appointment preparation and qualifying confirmations as fixed 30-minute Calendar candidates",
+  ),
+  emailDrafting: z.literal(
+    "When email is recommended, automatically supply independently copyable subject and body",
+  ),
+  notesPrecedence: z.literal(
+    "Mo's explicit current Notes: override conflicting or stale source-system AI-summary interpretation",
+  ),
+  notionVerification: z.literal(
+    "Create and update require fresh read-back before VERIFIED_SUCCESS",
+  ),
+  calendarReporting: z.literal(
+    "Successful Calendar creation is EXECUTED_UNVERIFIED",
+  ),
+});
 
 type OperatingContextValidation =
   | { ok: true }
-  | { ok: false; errorCode: string; message: string };
-
-type RuntimePermitClaims = {
-  version: 1;
-  runtimeVersion: string;
-  artifactId: string;
-  manifestSha256: string;
-  operatingContextVersion: string;
-  operatingContextSha256: string;
-  operatingMode: "PRODUCTION";
-  readiness: "READY";
-  businessDate: string;
-  issuedAt: number;
-  expiresAt: number;
-  permitId: string;
-};
-
-type PermitValidation =
-  | { ok: true; claims: RuntimePermitClaims }
   | { ok: false; errorCode: string; message: string };
 
 const permitTextEncoder = new TextEncoder();
@@ -92,242 +105,6 @@ async function validateOperatingContext(): Promise<OperatingContextValidation> {
   return { ok: true };
 }
 
-function base64UrlEncode(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function base64UrlDecode(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
-  const binary = atob(normalized + padding);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
-async function importPermitKey(signingKey: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    permitTextEncoder.encode(signingKey),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-}
-
-function losAngelesParts(date: Date) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: RUNTIME_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const value = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((part) => part.type === type)?.value);
-
-  return {
-    year: value("year"),
-    month: value("month"),
-    day: value("day"),
-    hour: value("hour"),
-    minute: value("minute"),
-    second: value("second"),
-  };
-}
-
-function losAngelesBusinessDate(date: Date): string {
-  const { year, month, day } = losAngelesParts(date);
-  return (
-    String(year) +
-    "-" +
-    String(month).padStart(2, "0") +
-    "-" +
-    String(day).padStart(2, "0")
-  );
-}
-
-function losAngelesOffsetMs(date: Date): number {
-  const parts = losAngelesParts(date);
-  const representedAsUtc = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-  return representedAsUtc - Math.floor(date.getTime() / 1000) * 1000;
-}
-
-function nextLosAngelesDayBoundary(date: Date): Date {
-  const current = losAngelesParts(date);
-  const nextLocalDate = new Date(
-    Date.UTC(current.year, current.month - 1, current.day + 1),
-  );
-  const targetAsUtc = Date.UTC(
-    nextLocalDate.getUTCFullYear(),
-    nextLocalDate.getUTCMonth(),
-    nextLocalDate.getUTCDate(),
-  );
-
-  let candidate = new Date(targetAsUtc);
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    candidate = new Date(targetAsUtc - losAngelesOffsetMs(candidate));
-  }
-  return candidate;
-}
-
-async function issueRuntimePermit(
-  signingKey: string,
-  now = new Date(),
-): Promise<{ runtimePermit: string; claims: RuntimePermitClaims }> {
-  const issuedAt = Math.floor(now.getTime() / 1000);
-  const maximumExpiry = now.getTime() + MAX_PERMIT_LIFETIME_MS;
-  const dayBoundary = nextLosAngelesDayBoundary(now).getTime();
-  const expiresAt = Math.floor(Math.min(maximumExpiry, dayBoundary) / 1000);
-
-  const claims: RuntimePermitClaims = {
-    version: 1,
-    runtimeVersion: RUNTIME_VERSION,
-    artifactId: RUNTIME_ARTIFACT_ID,
-    manifestSha256: RUNTIME_MANIFEST_SHA256,
-    operatingContextVersion: OPERATING_CONTEXT_VERSION,
-    operatingContextSha256: OPERATING_CONTEXT_SHA256,
-    operatingMode: "PRODUCTION",
-    readiness: "READY",
-    businessDate: losAngelesBusinessDate(now),
-    issuedAt,
-    expiresAt,
-    permitId: crypto.randomUUID(),
-  };
-
-  const encodedClaims = base64UrlEncode(
-    permitTextEncoder.encode(JSON.stringify(claims)),
-  );
-  const key = await importPermitKey(signingKey);
-  const signature = new Uint8Array(
-    await crypto.subtle.sign(
-      "HMAC",
-      key,
-      permitTextEncoder.encode("v1." + encodedClaims),
-    ),
-  );
-
-  return {
-    runtimePermit:
-      "v1." + encodedClaims + "." + base64UrlEncode(signature),
-    claims,
-  };
-}
-
-async function validateRuntimePermit(
-  runtimePermit: string,
-  signingKey: string,
-  now = new Date(),
-): Promise<PermitValidation> {
-  if (!signingKey) {
-    return {
-      ok: false,
-      errorCode: "RUNTIME_PERMIT_CONFIGURATION_ERROR",
-      message: "Runtime permit validation is unavailable.",
-    };
-  }
-
-  try {
-    const [prefix, encodedClaims, encodedSignature, extra] =
-      runtimePermit.split(".");
-    if (prefix !== "v1" || !encodedClaims || !encodedSignature || extra) {
-      throw new Error("Malformed permit");
-    }
-
-    const key = await importPermitKey(signingKey);
-    const signatureValid = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      base64UrlDecode(encodedSignature),
-      permitTextEncoder.encode("v1." + encodedClaims),
-    );
-    if (!signatureValid) {
-      return {
-        ok: false,
-        errorCode: "RUNTIME_PERMIT_TAMPERED",
-        message: "The runtime permit signature is invalid.",
-      };
-    }
-
-    const claims = JSON.parse(
-      new TextDecoder().decode(base64UrlDecode(encodedClaims)),
-    ) as RuntimePermitClaims;
-    const nowSeconds = Math.floor(now.getTime() / 1000);
-
-    if (
-      claims.version !== 1 ||
-      claims.runtimeVersion !== RUNTIME_VERSION ||
-      claims.artifactId !== RUNTIME_ARTIFACT_ID ||
-      claims.manifestSha256 !== RUNTIME_MANIFEST_SHA256 ||
-      claims.operatingContextVersion !== OPERATING_CONTEXT_VERSION ||
-      claims.operatingContextSha256 !== OPERATING_CONTEXT_SHA256
-    ) {
-      return {
-        ok: false,
-        errorCode: "RUNTIME_PERMIT_VERSION_MISMATCH",
-        message: "The runtime permit does not match the certified runtime.",
-      };
-    }
-
-    if (
-      claims.operatingMode !== "PRODUCTION" ||
-      claims.readiness !== "READY"
-    ) {
-      return {
-        ok: false,
-        errorCode: "RUNTIME_PERMIT_MODE_MISMATCH",
-        message: "The runtime permit is not valid for production operation.",
-      };
-    }
-
-    if (claims.businessDate !== losAngelesBusinessDate(now)) {
-      return {
-        ok: false,
-        errorCode: "RUNTIME_PERMIT_WRONG_DAY",
-        message:
-          "The runtime permit is not valid for the current Los Angeles business date.",
-      };
-    }
-
-    if (
-      !Number.isInteger(claims.issuedAt) ||
-      !Number.isInteger(claims.expiresAt) ||
-      claims.expiresAt <= claims.issuedAt ||
-      claims.expiresAt - claims.issuedAt > MAX_PERMIT_LIFETIME_MS / 1000 ||
-      nowSeconds >= claims.expiresAt
-    ) {
-      return {
-        ok: false,
-        errorCode: "RUNTIME_PERMIT_EXPIRED",
-        message: "The runtime permit has expired or has an invalid lifetime.",
-      };
-    }
-
-    return { ok: true, claims };
-  } catch {
-    return {
-      ok: false,
-      errorCode: "INVALID_RUNTIME_PERMIT",
-      message: "The runtime permit is malformed.",
-    };
-  }
-}
-
-
 function createServer(
   makeGatewayUrl: string,
   makeRuntimeHealthUrl: string,
@@ -360,6 +137,7 @@ function createServer(
             executionStatus: "REJECTED",
             errorCode: validation.errorCode,
             message: validation.message,
+            permitFingerprint: validation.permitFingerprint,
           }),
         },
       ],
@@ -414,7 +192,6 @@ function createServer(
         leadCode: z.string().optional(),
         executionNotes: z.string().optional(),
         nextAction: z.string().optional(),
-        calendarRegistry: z.string().optional(),
       }),
     },
     async ({
@@ -425,7 +202,6 @@ function createServer(
       leadCode,
       executionNotes,
       nextAction,
-      calendarRegistry,
     }) => {
       const permitError = await requireRuntimePermit(
         runtimePermit,
@@ -452,7 +228,7 @@ function createServer(
           startDateTime,
           executionNotes: executionNotes ?? "",
           durationMinutes: 30,
-          calendarRegistry: calendarRegistry ?? "Lead Desk OS Light",
+          calendarRegistry: "Lead Desk OS Light",
         }),
       });
 
@@ -523,7 +299,14 @@ function createServer(
         content: [
           {
             type: "text",
-            text: JSON.stringify(result),
+            text: JSON.stringify({
+              ...gatewayResult,
+              success: true,
+              executionStatus: "EXECUTED_UNVERIFIED",
+              verificationStatus: "UNVERIFIED",
+              message:
+                "Calendar event creation was executed but is unverified because Light has no Calendar read-back capability.",
+            }),
           },
         ],
       };
@@ -543,34 +326,9 @@ function createServer(
       },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
-        leadCode: z.string().min(1),
-        workflow: z.enum([
-          "Internet Lead",
-          "General Engagement",
-          "Re-Engagement",
-          "Pricing Inquiry",
-          "Appointment",
-          "Demo/Test Drive",
-          "Negotiation",
-          "Credit",
-          "Contracting",
-          "Delivery",
-          "Two-Way Contact",
-          "Contracted",
-        ]),
-        stage: z.enum([
-          "New Lead",
-          "Two-Way Contact",
-          "Appointment Set",
-          "Showroom Visit",
-          "Demo/Test Drive",
-          "Quote Presented",
-          "Negotiation",
-          "Credit Submitted",
-          "Contracted",
-          "Delivered",
-          "Lost",
-        ]),
+        leadCode: z.string().trim().min(1),
+        workflow: z.enum(LIGHT_WORKFLOWS),
+        stage: z.enum(LIGHT_STAGES),
         executionNotes: z.string().optional(),
         nextAction: z.string().optional(),
       }),
@@ -763,37 +521,16 @@ if (
       },
       inputSchema: z.object({
         runtimePermit: z.string().min(1),
-        leadCode: z.string().min(1),
-        workflow: z.enum([
-          "Internet Lead",
-          "General Engagement",
-          "Re-Engagement",
-          "Pricing Inquiry",
-          "Appointment",
-          "Demo/Test Drive",
-          "Negotiation",
-          "Credit",
-          "Contracting",
-          "Delivery",
-          "Two-Way Contact",
-          "Contracted",
-        ]),
-        stage: z.enum([
-          "New Lead",
-          "Two-Way Contact",
-          "Appointment Set",
-          "Showroom Visit",
-          "Demo/Test Drive",
-          "Quote Presented",
-          "Negotiation",
-          "Credit Submitted",
-          "Contracted",
-          "Delivered",
-          "Lost",
-        ]),
-        executionNotes: z.string(),
-        nextAction: z.string(),
-      }),
+        leadCode: z.string().trim().min(1),
+        workflow: z.enum(LIGHT_WORKFLOWS).optional(),
+        stage: z.enum(LIGHT_STAGES).optional(),
+        executionNotes: z.string().min(1).optional(),
+        nextAction: z.string().min(1).optional(),
+      }).refine(
+        (value) => value.workflow !== undefined || value.stage !== undefined ||
+          value.executionNotes !== undefined || value.nextAction !== undefined,
+        { message: "At least one non-empty approved field change is required." },
+      ),
     },
     async ({
       runtimePermit,
@@ -817,18 +554,18 @@ if (
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          stage,
           action: "updateNotionOpportunity",
           purpose: "",
           leadCode,
-          workflow,
           taskTitle: "",
-          nextAction,
           executionId,
           startDateTime: "",
-          executionNotes,
           durationMinutes: 0,
           calendarRegistry: "",
+          ...(stage !== undefined ? { stage } : {}),
+          ...(workflow !== undefined ? { workflow } : {}),
+          ...(nextAction !== undefined ? { nextAction } : {}),
+          ...(executionNotes !== undefined ? { executionNotes } : {}),
         }),
       });
 
@@ -1203,9 +940,11 @@ if (
     inputSchema: z.object({
       requestedOperatingMode: z.literal("PRODUCTION"),
       clientTimeZone: z.literal("America/Los_Angeles"),
+      installationChallenge: z.string().optional(),
+      contextAttestation: contextAttestationSchema.optional(),
     }),
   },
-    async ({ requestedOperatingMode, clientTimeZone }) => {
+    async ({ requestedOperatingMode, clientTimeZone, installationChallenge, contextAttestation }) => {
   const executionId = crypto.randomUUID();
   const action = "initializeLeadDeskRuntime";
   const artifactId = RUNTIME_ARTIFACT_ID;
@@ -1410,7 +1149,70 @@ if (!operatingContextValidation.ok) {
   };
 }
 
-const { runtimePermit, claims } = await issueRuntimePermit(
+if (!installationChallenge || !contextAttestation) {
+  const challenge = await issueContextChallenge(runtimePermitSigningKey);
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify({
+          success: false,
+          executionId,
+          action,
+          runtimeStatus: "NOT_READY",
+          technicalReadiness: "READY",
+          operationalContextStatus: "INSTALLATION_REQUIRED",
+          errorCode: "OPERATING_CONTEXT_INSTALLATION_REQUIRED",
+          message:
+            "Read and apply the complete Operating Context, then call initialization again with the challenge and all attestation answers. Production handling remains blocked.",
+          installationChallenge: challenge,
+          operatingContext: {
+            schemaVersion: operatingContextArtifact.schemaVersion,
+            operatingContextVersion: operatingContextArtifact.operatingContextVersion,
+            operatingContextSha256: operatingContextArtifact.operatingContextSha256,
+            contentType: operatingContextArtifact.contentType,
+            policyMarkdown: operatingContextArtifact.policyMarkdown,
+          },
+          attestationInstructions: {
+            internetLeadCadence:
+              "State the exact Co-Video, Day 2, Day 3-7, duration, Calendar-candidate, and termination rule.",
+            appointmentPreparation:
+              "State how appointment preparation and qualifying confirmations are evaluated for Calendar.",
+            emailDrafting:
+              "State what must be supplied automatically when email is recommended.",
+            notesPrecedence:
+              "State the source precedence rule for Mo's Notes: and an AI summary.",
+            notionVerification:
+              "State the verification requirement for Notion create/update.",
+            calendarReporting:
+              "State the reporting status after successful Calendar creation.",
+          },
+        }),
+      },
+    ],
+  };
+}
+
+if (!(await validateContextChallenge(installationChallenge, runtimePermitSigningKey))) {
+  return {
+    isError: true,
+    content: [{
+      type: "text",
+      text: JSON.stringify({
+        success: false,
+        executionId,
+        action,
+        runtimeStatus: "NOT_READY",
+        technicalReadiness: "READY",
+        operationalContextStatus: "NOT_READY",
+        errorCode: "OPERATING_CONTEXT_ATTESTATION_INVALID",
+        message: "The Operating Context installation challenge is invalid or expired. Reinitialize to receive the complete current context again.",
+      }),
+    }],
+  };
+}
+
+const { runtimePermit, claims, permitFingerprint } = await issueRuntimePermit(
   runtimePermitSigningKey,
 );
 const permitIssuedAt = new Date(claims.issuedAt * 1000).toISOString();
@@ -1450,6 +1252,7 @@ return {
         },
         permitIssuedAt,
         permitExpiresAt,
+        permitFingerprint,
         runtimePermit,
       }),
     },
