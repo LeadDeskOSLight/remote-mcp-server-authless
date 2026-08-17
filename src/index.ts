@@ -13,6 +13,7 @@ const OPERATING_CONTEXT_SCHEMA_VERSION = 1;
 const OPERATING_CONTEXT_VERSION = "1.0.0";
 const OPERATING_CONTEXT_SHA256 =
   "2bedaef81202e88e60338740e00e2e4cb0a9abe6feb929e753a18d1dd2277a8e";
+const DAILY_SESSION_CONTEXT_VERSION = "1.0.0";
 
 type OperatingContextValidation =
   | { ok: true }
@@ -1412,6 +1413,8 @@ if (!operatingContextValidation.ok) {
 const { runtimePermit, claims } = await issueRuntimePermit(
   runtimePermitSigningKey,
 );
+const permitIssuedAt = new Date(claims.issuedAt * 1000).toISOString();
+const permitExpiresAt = new Date(claims.expiresAt * 1000).toISOString();
 
 return {
   content: [
@@ -1426,6 +1429,16 @@ return {
         operationalContextStatus: "READY",
         businessDate: claims.businessDate,
         timeZone: RUNTIME_TIME_ZONE,
+        dailySessionContextVersion: DAILY_SESSION_CONTEXT_VERSION,
+        dailySessionContext: {
+          businessDate: claims.businessDate,
+          timeZone: RUNTIME_TIME_ZONE,
+          technicalReadiness: "READY",
+          operationalContextStatus: "READY",
+          checks: runtimeResult.checks,
+          permitIssuedAt,
+          permitExpiresAt,
+        },
         operatingContext: {
           schemaVersion: operatingContextArtifact.schemaVersion,
           operatingContextVersion:
@@ -1435,8 +1448,8 @@ return {
           contentType: operatingContextArtifact.contentType,
           policyMarkdown: operatingContextArtifact.policyMarkdown,
         },
-        permitIssuedAt: new Date(claims.issuedAt * 1000).toISOString(),
-        permitExpiresAt: new Date(claims.expiresAt * 1000).toISOString(),
+        permitIssuedAt,
+        permitExpiresAt,
         runtimePermit,
       }),
     },
