@@ -43,4 +43,5 @@ test("MCP contract excludes prohibited workflows and fixes Calendar reporting/ro
   assert.ok(source.includes("changed and unchanged approved fields"));
   assert.ok(source.includes('"x-make-apikey": makeGatewayKey'));
   assert.ok(source.includes("MAKE_GATEWAY_AUTH_CONFIGURATION_ERROR"));
+  assert.ok(source.includes("fieldMask:"));
 });
