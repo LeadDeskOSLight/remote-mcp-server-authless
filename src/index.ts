@@ -667,12 +667,6 @@ if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
           startDateTime: "",
           durationMinutes: 0,
           calendarRegistry: "",
-          fieldMask: [
-            ...(stage !== undefined ? ["stage"] : []),
-            ...(workflow !== undefined ? ["workflow"] : []),
-            ...(nextAction !== undefined ? ["nextAction"] : []),
-            ...(executionNotes !== undefined ? ["executionNotes"] : []),
-          ],
           ...(stage !== undefined ? { stage } : {}),
           ...(workflow !== undefined ? { workflow } : {}),
           ...(nextAction !== undefined ? { nextAction } : {}),
