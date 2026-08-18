@@ -11,4 +11,13 @@
 	"observability": {
 		"enabled": true,
 	},
+	"env": {
+		"canary": {
+			"name": "remote-mcp-server-authless-canary",
+			"workers_dev": true,
+			"observability": {
+				"enabled": true,
+			},
+		},
+	},
 }
