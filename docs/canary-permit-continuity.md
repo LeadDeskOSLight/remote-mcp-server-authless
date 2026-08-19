@@ -38,7 +38,8 @@ After deploying only the canary Worker, run:
 node "$env:USERPROFILE\Documents\remote-mcp-server-authless\scripts\canary-runtime-lifecycle.mjs" `
   "https://remote-mcp-server-authless-canary.mohmoh-wahba.workers.dev/mcp" `
   "$env:USERPROFILE\Documents\LeadDeskCanarySecrets\LEAD_DESK_API_KEY.txt" `
-  "Catherine-28-Elantra"
+  "Catherine-28-Elantra" `
+  "2026-08-21T09:00:00-07:00"
 ```
 
 The acceptance output must include:
@@ -47,6 +48,11 @@ The acceptance output must include:
 - `TAMPERED_PERMIT=REJECTED`
 - `EXACT_PERMIT_LOOKUP=PASS`
 - `MAKE_PERMIT_CONTINUITY=PASS RECEIPT_REDACTED=PASS`
+- `CALENDAR_PERMIT_CONTINUITY=PASS ... DELETE_TEST_EVENT=REQUIRED`
 - `CANARY_RUNTIME_LIFECYCLE=PASS`
 
-The harness intentionally does not print the permit or its fingerprint.
+Choose a future Calendar timestamp whose explicit offset is correct for
+America/Los_Angeles. The Calendar argument is optional, but the complete
+continuity acceptance test requires it. Visually verify that the event is
+exactly 30 minutes and then delete the temporary event. The harness
+intentionally does not print the permit or its fingerprint.

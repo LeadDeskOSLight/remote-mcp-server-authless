@@ -53,3 +53,12 @@ test("MCP contract excludes prohibited workflows and fixes Calendar reporting/ro
   assert.ok(source.includes("runtimePermit: _runtimePermit"));
   assert.ok(source.includes("permitFingerprint: _permitFingerprint"));
 });
+
+test("canary lifecycle proves and redacts Notion and Calendar permit receipts", () => {
+  const source = readFileSync(new URL("../scripts/canary-runtime-lifecycle.mjs", import.meta.url), "utf8");
+  assert.ok(source.includes("MAKE_PERMIT_CONTINUITY=PASS RECEIPT_REDACTED=PASS"));
+  assert.ok(source.includes("CALENDAR_PERMIT_CONTINUITY=PASS"));
+  assert.ok(source.includes('"runtimePermit" in calendar'));
+  assert.ok(source.includes('"permitFingerprint" in calendar'));
+  assert.ok(!source.includes("PERMIT_FINGERPRINT="));
+});

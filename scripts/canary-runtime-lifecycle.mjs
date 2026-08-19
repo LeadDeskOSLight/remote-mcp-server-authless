@@ -4,9 +4,9 @@ import { stdin as input, stdout as output } from "node:process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const [endpoint, apiKeyFile, leadCode = "Catherine-28-Elantra"] = process.argv.slice(2);
+const [endpoint, apiKeyFile, leadCode = "Catherine-28-Elantra", calendarStartDateTime] = process.argv.slice(2);
 if (!endpoint || !apiKeyFile) {
-  throw new Error("Usage: node scripts/canary-runtime-lifecycle.mjs <https://.../mcp> <api-key-file> [lead-code]");
+  throw new Error("Usage: node scripts/canary-runtime-lifecycle.mjs <https://.../mcp> <api-key-file> [lead-code] [calendar-start-rfc3339]");
 }
 
 const apiKey = (await readFile(apiKeyFile, "utf8")).trim();
@@ -97,6 +97,27 @@ try {
   }
   console.log(`EXACT_PERMIT_LOOKUP=PASS MATCH_COUNT=${lookup.matchCount} EXECUTION_ID=${lookup.executionId}`);
   console.log("MAKE_PERMIT_CONTINUITY=PASS RECEIPT_REDACTED=PASS");
+
+  if (calendarStartDateTime) {
+    await prompt.question("Start Calendar clone in Run once, then Gateway clone in Run once. Press Enter when both are waiting: ");
+    const calendar = await call("createCalendarEvent", {
+      runtimePermit,
+      taskTitle: "AUDIT — Canary Permit Continuity",
+      startDateTime: calendarStartDateTime,
+      purpose: "Authorized canary runtime-permit continuity validation",
+      leadCode: "AUDIT-CANARY-PERMIT-CONTINUITY",
+      executionNotes: "Temporary canary audit event. Delete after visual verification.",
+      nextAction: "Delete temporary audit event after verification.",
+    });
+    if (calendar.success !== true || calendar.executionStatus !== "EXECUTED_UNVERIFIED" ||
+        calendar.verificationStatus !== "UNVERIFIED") {
+      throw new Error(`Calendar permit continuity failed: ${calendar.errorCode ?? calendar.executionStatus}`);
+    }
+    if ("runtimePermit" in calendar || "permitFingerprint" in calendar) {
+      throw new Error("Internal Calendar permit continuity receipt escaped the Worker boundary.");
+    }
+    console.log(`CALENDAR_PERMIT_CONTINUITY=PASS EXECUTION_ID=${calendar.executionId} DELETE_TEST_EVENT=REQUIRED`);
+  }
   console.log("CANARY_RUNTIME_LIFECYCLE=PASS");
 } finally {
   prompt.close();
