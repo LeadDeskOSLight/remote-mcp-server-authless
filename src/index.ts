@@ -12,6 +12,7 @@ import {
   RUNTIME_VERSION,
   issueContextChallenge,
   issueRuntimePermit,
+  permitFingerprint,
   validateContextChallenge,
   validateRuntimePermit,
 } from "./runtime-permit";
@@ -126,12 +127,34 @@ function createServer(
     nextAction: string;
   };
 
-  const lookupForVerification = async (leadCode: string): Promise<{
+  const permitContinuity = async (runtimePermit: string) => ({
+    runtimePermit,
+    permitFingerprint: await permitFingerprint(runtimePermit),
+  });
+
+  const hasMatchingPermitReceipt = (
+    result: Record<string, unknown>,
+    expectedPermit: string,
+    expectedFingerprint: string,
+  ) => result.runtimePermit === expectedPermit &&
+    result.permitFingerprint === expectedFingerprint;
+
+  const withoutPermitReceipt = (result: Record<string, unknown>) => {
+    const {
+      runtimePermit: _runtimePermit,
+      permitFingerprint: _permitFingerprint,
+      ...safeResult
+    } = result;
+    return safeResult;
+  };
+
+  const lookupForVerification = async (runtimePermit: string, leadCode: string): Promise<{
     matchCount: number;
     opportunity?: ApprovedOpportunity;
     errorCode?: string;
   }> => {
     const executionId = crypto.randomUUID();
+    const continuity = await permitContinuity(runtimePermit);
     let response: Response;
     try {
       response = await fetch(makeGatewayUrl, {
@@ -141,6 +164,7 @@ function createServer(
           "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
+          ...continuity,
           stage: "", action: "getNotionOpportunity", purpose: "", leadCode,
           workflow: "", taskTitle: "", nextAction: "", executionId,
           startDateTime: "", executionNotes: "", durationMinutes: 0,
@@ -152,7 +176,8 @@ function createServer(
     let result: Record<string, unknown>;
     try { result = JSON.parse(await response.text()) as Record<string, unknown>; }
     catch { return { matchCount: -1, errorCode: "INVALID_GATEWAY_RESPONSE" }; }
-    if (result.executionId !== executionId || result.action !== "getNotionOpportunity")
+    if (!hasMatchingPermitReceipt(result, runtimePermit, continuity.permitFingerprint) ||
+        result.executionId !== executionId || result.action !== "getNotionOpportunity")
       return { matchCount: -1, errorCode: "INVALID_GATEWAY_CONFIRMATION" };
     if (result.success === false) {
       if (result.errorCode === "NOT_FOUND" && result.matchCount === 0) return { matchCount: 0 };
@@ -280,6 +305,7 @@ function createServer(
       if (permitError) return permitError;
 
       const executionId = crypto.randomUUID();
+      const continuity = await permitContinuity(runtimePermit);
 
       const response = await fetch(makeGatewayUrl, {
         method: "POST",
@@ -288,6 +314,7 @@ function createServer(
           "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
+          ...continuity,
           stage: "Execute",
           action: "createCalendarEvent",
           purpose: purpose ?? "",
@@ -346,7 +373,8 @@ function createServer(
         gatewayResult.success !== true ||
         gatewayResult.executionId !== executionId ||
         gatewayResult.action !== "createCalendarEvent" ||
-        gatewayResult.executionStatus !== "EXECUTED"
+        gatewayResult.executionStatus !== "EXECUTED" ||
+        !hasMatchingPermitReceipt(gatewayResult, runtimePermit, continuity.permitFingerprint)
       ) {
         return {
           isError: true,
@@ -371,7 +399,7 @@ function createServer(
           {
             type: "text",
             text: JSON.stringify({
-              ...gatewayResult,
+              ...withoutPermitReceipt(gatewayResult),
               success: true,
               executionStatus: "EXECUTED_UNVERIFIED",
               verificationStatus: "UNVERIFIED",
@@ -418,7 +446,7 @@ function createServer(
       );
       if (permitError) return permitError;
 
-      const preflight = await lookupForVerification(leadCode);
+      const preflight = await lookupForVerification(runtimePermit, leadCode);
       if (preflight.errorCode) return {
         isError: true,
         content: [{ type: "text", text: JSON.stringify({ success: false, action: "createNotionOpportunity", executionStatus: "REJECTED", errorCode: preflight.errorCode, message: "Fresh exact Lead Code preflight could not be verified. No create was attempted." }) }],
@@ -429,6 +457,7 @@ function createServer(
       };
 
       const executionId = crypto.randomUUID();
+      const continuity = await permitContinuity(runtimePermit);
 
       const response = await fetch(makeGatewayUrl, {
         method: "POST",
@@ -437,6 +466,7 @@ function createServer(
           "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
+          ...continuity,
           stage,
           action: "createNotionOpportunity",
           purpose: "",
@@ -492,6 +522,7 @@ function createServer(
 const gatewayResult = result as Record<string, unknown>;
 
 if (
+  !hasMatchingPermitReceipt(gatewayResult, runtimePermit, continuity.permitFingerprint) ||
   gatewayResult.executionId !== executionId ||
   gatewayResult.action !== "createNotionOpportunity"
 ) {
@@ -551,7 +582,7 @@ if (gatewayResult.success === false) {
     content: [
       {
         type: "text",
-        text: JSON.stringify(gatewayResult),
+        text: JSON.stringify(withoutPermitReceipt(gatewayResult)),
       },
     ],
   };
@@ -580,7 +611,7 @@ if (
   };
 }
 
-const verifiedCreate = await lookupForVerification(leadCode);
+const verifiedCreate = await lookupForVerification(runtimePermit, leadCode);
 const expectedCreate = {
   leadCode,
   currentWorkflow: workflow,
@@ -600,7 +631,7 @@ if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
         content: [
           {
             type: "text",
-            text: JSON.stringify({ ...gatewayResult, executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: verifiedCreate.opportunity }),
+            text: JSON.stringify({ ...withoutPermitReceipt(gatewayResult), executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: verifiedCreate.opportunity }),
           },
         ],
       };
@@ -644,13 +675,14 @@ if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
       );
       if (permitError) return permitError;
 
-      const beforeUpdate = await lookupForVerification(leadCode);
+      const beforeUpdate = await lookupForVerification(runtimePermit, leadCode);
       if (beforeUpdate.matchCount !== 1 || !beforeUpdate.opportunity) return {
         isError: true,
         content: [{ type: "text", text: JSON.stringify({ success: false, action: "updateNotionOpportunity", executionStatus: "REJECTED", errorCode: beforeUpdate.errorCode ?? (beforeUpdate.matchCount === 0 ? "NOT_FOUND" : "DUPLICATE_LEAD_CODE"), matchCount: beforeUpdate.matchCount, message: "Update requires exactly one fresh Lead Code match. No update was attempted." }) }],
       };
 
       const executionId = crypto.randomUUID();
+      const continuity = await permitContinuity(runtimePermit);
 
       const response = await fetch(makeGatewayUrl, {
         method: "POST",
@@ -659,6 +691,7 @@ if (verifiedCreate.matchCount !== 1 || !verifiedCreate.opportunity ||
           "x-make-apikey": makeGatewayKey,
         },
         body: JSON.stringify({
+          ...continuity,
           action: "updateNotionOpportunity",
           purpose: "",
           leadCode,
@@ -715,6 +748,7 @@ const gatewayResult = result as Record<string, unknown>;
 
 if (
   gatewayResult.success !== true ||
+  !hasMatchingPermitReceipt(gatewayResult, runtimePermit, continuity.permitFingerprint) ||
   gatewayResult.executionId !== executionId ||
   gatewayResult.action !== "updateNotionOpportunity" ||
   gatewayResult.executionStatus !== "EXECUTED"
@@ -737,7 +771,7 @@ if (
     ],
   };
 }
-const afterUpdate = await lookupForVerification(leadCode);
+const afterUpdate = await lookupForVerification(runtimePermit, leadCode);
 const expectedUpdate: ApprovedOpportunity = {
   ...beforeUpdate.opportunity,
   ...(workflow !== undefined ? { currentWorkflow: workflow } : {}),
@@ -756,7 +790,7 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
         content: [
           {
             type: "text",
-            text: JSON.stringify({ ...gatewayResult, executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: afterUpdate.opportunity }),
+            text: JSON.stringify({ ...withoutPermitReceipt(gatewayResult), executionStatus: "VERIFIED_SUCCESS", verificationStatus: "VERIFIED_SUCCESS", opportunity: afterUpdate.opportunity }),
           },
         ],
       };
@@ -784,6 +818,7 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
       if (permitError) return permitError;
 
       const executionId = crypto.randomUUID();
+      const continuity = await permitContinuity(runtimePermit);
 
       const failure = (
         errorCode: string,
@@ -815,6 +850,7 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
             "x-make-apikey": makeGatewayKey,
           },
           body: JSON.stringify({
+            ...continuity,
             stage: "",
             action,
             purpose: "",
@@ -870,6 +906,7 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
       const gatewayResult = result as Record<string, unknown>;
 
       if (
+        !hasMatchingPermitReceipt(gatewayResult, runtimePermit, continuity.permitFingerprint) ||
         gatewayResult.executionId !== executionId ||
         gatewayResult.action !== action
       ) {
@@ -910,12 +947,12 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
               text: JSON.stringify(
                 validDuplicate
                   ? {
-                      ...gatewayResult,
+                      ...withoutPermitReceipt(gatewayResult),
                       errorCode: "DUPLICATE_LEAD_CODE",
                       message:
                         "Multiple opportunities share the requested lead code. No record was selected.",
                     }
-                  : gatewayResult,
+                  : withoutPermitReceipt(gatewayResult),
               ),
             },
           ],

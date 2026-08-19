@@ -27,27 +27,39 @@ export function installGatewayPermitForwarding(value) {
     return;
   }
   if (!value || typeof value !== "object") return;
-  if (value.id === 8 && value.module === "http:MakeRequest" && value.mapper) {
+  if ([6, 8, 14].includes(value.id) && value.module === "http:MakeRequest" && value.mapper) {
+    let body = {};
+    if (typeof value.mapper.jsonStringBodyContent === "string") {
+      try { body = JSON.parse(value.mapper.jsonStringBodyContent); } catch { body = {}; }
+    } else if (value.mapper.dataStructureBodyContent && typeof value.mapper.dataStructureBodyContent === "object") {
+      body = value.mapper.dataStructureBodyContent;
+    }
     delete value.mapper.bodyDataStructure;
     delete value.mapper.dataStructureBodyContent;
     value.mapper.inputMethod = "jsonString";
     value.mapper.jsonStringBodyContent = JSON.stringify({
       runtimePermit: "{{2.runtimePermit}}",
-      stage: "{{2.stage}}",
-      action: "{{2.action}}",
-      purpose: "{{2.purpose}}",
-      leadCode: "{{2.leadCode}}",
-      workflow: "{{2.workflow}}",
-      taskTitle: "{{2.taskTitle}}",
-      nextAction: "{{2.nextAction}}",
-      executionId: "{{2.executionId}}",
-      startDateTime: "{{2.startDateTime}}",
-      executionNotes: "{{2.executionNotes}}",
-      durationMinutes: "{{2.durationMinutes}}",
-      calendarRegistry: "{{2.calendarRegistry}}",
+      permitFingerprint: "{{2.permitFingerprint}}",
+      ...body,
     });
   }
+  if ([10, 13].includes(value.id) && value.module === "gateway:WebhookRespond" && value.mapper?.body) {
+    const source = value.id === 10 ? 8 : 6;
+    value.mapper.body = value.mapper.body.replace(/\s*}\s*$/, `,\n  "runtimePermit": "{{${source}.data.runtimePermit}}",\n  "permitFingerprint": "{{${source}.data.permitFingerprint}}"\n}`);
+  }
   Object.values(value).forEach(installGatewayPermitForwarding);
+}
+
+export function installCapabilityPermitReceipt(value) {
+  if (Array.isArray(value)) {
+    value.forEach(installCapabilityPermitReceipt);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (value.module === "gateway:WebhookRespond" && typeof value.mapper?.body === "string" && /^\s*\{/.test(value.mapper.body)) {
+    value.mapper.body = value.mapper.body.replace(/\s*}\s*$/, ',\n  "runtimePermit": "{{3.runtimePermit}}",\n  "permitFingerprint": "{{3.permitFingerprint}}"\n}');
+  }
+  Object.values(value).forEach(installCapabilityPermitReceipt);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
@@ -58,6 +70,9 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   for (const input of inputs) {
     const parsed = JSON.parse(await readFile(input, "utf8"));
     if (basename(input).startsWith("Integration Gateway")) installGatewayPermitForwarding(parsed);
+    if (basename(input).startsWith("Integration — Notion") || basename(input).startsWith("Calendar Capability")) {
+      installCapabilityPermitReceipt(parsed);
+    }
     const sanitized = sanitize(parsed);
     const outputName = basename(input).replace(/\.blueprint\.json$/i, ".sanitized.blueprint.json");
     await writeFile(join(outputDirectory.pathname, outputName), `${JSON.stringify(sanitized, null, 2)}\n`);

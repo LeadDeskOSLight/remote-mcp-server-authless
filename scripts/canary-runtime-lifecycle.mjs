@@ -77,7 +77,7 @@ try {
     throw new Error(`Initialization did not become READY: ${ready.errorCode ?? ready.runtimeStatus}`);
   }
   const runtimePermit = ready.runtimePermit;
-  console.log(`PHASE2=READY PERMIT_LENGTH=${runtimePermit.length} PERMIT_FINGERPRINT=${ready.permitFingerprint}`);
+  console.log(`PHASE2=READY PERMIT_LENGTH=${runtimePermit.length}`);
 
   const position = Math.min(runtimePermit.length - 1, runtimePermit.indexOf(".") + 2);
   const mutated = runtimePermit.slice(0, position) + (runtimePermit[position] === "A" ? "B" : "A") + runtimePermit.slice(position + 1);
@@ -92,7 +92,11 @@ try {
   if (lookup.success !== true || lookup.executionStatus !== "EXECUTED" || lookup.matchCount !== 1) {
     throw new Error(`Exact permit lookup failed: ${lookup.errorCode ?? lookup.executionStatus}`);
   }
+  if ("runtimePermit" in lookup || "permitFingerprint" in lookup) {
+    throw new Error("Internal permit continuity receipt escaped the Worker boundary.");
+  }
   console.log(`EXACT_PERMIT_LOOKUP=PASS MATCH_COUNT=${lookup.matchCount} EXECUTION_ID=${lookup.executionId}`);
+  console.log("MAKE_PERMIT_CONTINUITY=PASS RECEIPT_REDACTED=PASS");
   console.log("CANARY_RUNTIME_LIFECYCLE=PASS");
 } finally {
   prompt.close();

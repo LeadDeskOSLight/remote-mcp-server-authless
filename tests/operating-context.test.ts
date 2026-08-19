@@ -47,4 +47,9 @@ test("MCP contract excludes prohibited workflows and fixes Calendar reporting/ro
   assert.ok(source.includes('...(workflow !== undefined ? { workflow } : {})'));
   assert.ok(source.includes('...(nextAction !== undefined ? { nextAction } : {})'));
   assert.ok(source.includes('...(executionNotes !== undefined ? { executionNotes } : {})'));
+  assert.equal(source.match(/\.\.\.continuity,/g)?.length, 5);
+  assert.ok(source.includes("result.runtimePermit === expectedPermit"));
+  assert.ok(source.includes("result.permitFingerprint === expectedFingerprint"));
+  assert.ok(source.includes("runtimePermit: _runtimePermit"));
+  assert.ok(source.includes("permitFingerprint: _permitFingerprint"));
 });
