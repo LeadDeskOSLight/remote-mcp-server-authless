@@ -17,7 +17,7 @@ test("runtime permit identity is pinned to the current immutable manifest", () =
 	assert.equal(RUNTIME_ARTIFACT_ID, current.artifactId);
 	assert.equal(RUNTIME_MANIFEST_SHA256, current.manifestSha256);
 	const manifest = readFileSync(new URL(`../${current.manifestPath}`, import.meta.url), "utf8")
-		.replace(/\\r\\n/g, "\\n");
+		.replace(/\r\n/g, "\n");
 	assert.equal(createHash("sha256").update(manifest, "utf8").digest("hex"), current.manifestSha256);
 });
 

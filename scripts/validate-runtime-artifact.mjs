@@ -10,7 +10,7 @@ const chain = readFileSync(
 	.map((line) => JSON.parse(line));
 const current = chain.at(-1);
 const manifestUrl = new URL(`../${current.manifestPath}`, import.meta.url);
-const canonicalText = (value) => value.toString("utf8").replace(/\\r\\n/g, "\\n");
+const canonicalText = (value) => value.toString("utf8").replace(/\r\n/g, "\n");
 const manifestText = canonicalText(readFileSync(manifestUrl));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
