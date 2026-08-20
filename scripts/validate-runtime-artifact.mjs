@@ -10,7 +10,8 @@ const chain = readFileSync(
 	.map((line) => JSON.parse(line));
 const current = chain.at(-1);
 const manifestUrl = new URL(`../${current.manifestPath}`, import.meta.url);
-const manifestText = readFileSync(manifestUrl);
+const canonicalText = (value) => value.toString("utf8").replace(/\\r\\n/g, "\\n");
+const manifestText = canonicalText(readFileSync(manifestUrl));
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
 
 if (sha256(manifestText) !== current.manifestSha256) {
@@ -28,13 +29,13 @@ if (
 }
 
 for (const [path, entry] of Object.entries(manifest.files)) {
-	const archive = readFileSync(
+	const archive = canonicalText(readFileSync(
 		new URL(
 			`../artifacts/runtime/${manifest.artifactId}/${entry.archivePath}`,
 			import.meta.url,
 		),
-	);
-	if (archive.byteLength !== entry.bytes || sha256(archive) !== entry.sha256) {
+	));
+	if (Buffer.byteLength(archive, "utf8") !== entry.bytes || sha256(archive) !== entry.sha256) {
 		throw new Error(`Runtime artifact file mismatch: ${path}`);
 	}
 }
