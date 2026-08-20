@@ -19,6 +19,19 @@ test("Make blueprint sanitizer removes webhook URLs and gateway keys", () => {
   assert.ok(!source.includes("a".repeat(64)));
 });
 
+test("Make blueprint sanitizer removes environment identifiers and account emails", () => {
+  const sanitized = sanitize({
+    hook: 123,
+    connection: "notion2",
+    label: "Owner user@example.com",
+  });
+  assert.deepEqual(sanitized, {
+    hook: "SET_MAKE_WEBHOOK_ID",
+    connection: "SET_MAKE_CONNECTION",
+    label: "Owner SET_ACCOUNT_EMAIL",
+  });
+});
+
 test("Gateway opportunity route forwards the opaque permit in raw JSON", () => {
   const opportunity: any = {
     id: 8,
@@ -51,13 +64,29 @@ test("every Gateway route forwards the opaque permit and fingerprint", () => {
 });
 
 test("Gateway and downstream responses return an internal continuity receipt", () => {
-  const gateway: any = { id: 13, module: "gateway:WebhookRespond", mapper: { body: '{"success":true}' } };
-  installGatewayPermitForwarding(gateway);
-  assert.match(gateway.mapper.body, /\{\{6\.data\.runtimePermit\}\}/);
-  assert.match(gateway.mapper.body, /\{\{6\.data\.permitFingerprint\}\}/);
+  for (const [id, source] of [[10, 8], [13, 6]] as const) {
+    const gateway: any = { id, module: "gateway:WebhookRespond", mapper: { body: '{"success":true}' } };
+    installGatewayPermitForwarding(gateway);
+    assert.match(gateway.mapper.body, new RegExp(`\\{\\{${source}\\.data\\.runtimePermit\\}\\}`));
+    assert.match(gateway.mapper.body, new RegExp(`\\{\\{${source}\\.data\\.permitFingerprint\\}\\}`));
+  }
 
   const capability: any = { id: 5, module: "gateway:WebhookRespond", mapper: { body: '{"success":true}' } };
   installCapabilityPermitReceipt(capability);
   assert.match(capability.mapper.body, /\{\{3\.runtimePermit\}\}/);
   assert.match(capability.mapper.body, /\{\{3\.permitFingerprint\}\}/);
+});
+
+test("permit receipt installation is idempotent", () => {
+  const gateway: any = { id: 13, module: "gateway:WebhookRespond", mapper: { body: '{"success":true}' } };
+  installGatewayPermitForwarding(gateway);
+  installGatewayPermitForwarding(gateway);
+  assert.equal((gateway.mapper.body.match(/"runtimePermit"/g) ?? []).length, 1);
+  assert.equal((gateway.mapper.body.match(/"permitFingerprint"/g) ?? []).length, 1);
+
+  const capability: any = { id: 5, module: "gateway:WebhookRespond", mapper: { body: '{"success":true}' } };
+  installCapabilityPermitReceipt(capability);
+  installCapabilityPermitReceipt(capability);
+  assert.equal((capability.mapper.body.match(/"runtimePermit"/g) ?? []).length, 1);
+  assert.equal((capability.mapper.body.match(/"permitFingerprint"/g) ?? []).length, 1);
 });

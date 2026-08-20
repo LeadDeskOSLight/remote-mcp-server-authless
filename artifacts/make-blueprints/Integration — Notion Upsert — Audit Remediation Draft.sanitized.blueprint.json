@@ -6,7 +6,7 @@
       "module": "gateway:CustomWebHook",
       "version": 1,
       "parameters": {
-        "hook": 2702868,
+        "hook": "SET_MAKE_WEBHOOK_ID",
         "maxResults": 1
       },
       "mapper": {},
@@ -18,10 +18,10 @@
         "restore": {
           "parameters": {
             "hook": {
+              "label": "Audit Remediation — Notion Upsert",
               "data": {
                 "editable": "true"
-              },
-              "label": "Audit Remediation — Notion Upsert"
+              }
             }
           }
         },
@@ -125,7 +125,7 @@
                   ]
                 ],
                 "select": "data_source_item",
-                "data_source": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                "data_source": "DATA_SOURCE"
               },
               "metadata": {
                 "designer": {
@@ -143,7 +143,7 @@
                     "data_source": {
                       "rpcSearch": {
                         "label": "Lead Desk OS Light ",
-                        "value": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                        "value": "*****"
                       }
                     }
                   },
@@ -151,7 +151,7 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "notion2"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
                       "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                     }
@@ -1629,7 +1629,7 @@
                 },
                 "select": "list",
                 "updateBy": "data_source",
-                "data_source": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                "data_source": "*****"
               },
               "metadata": {
                 "designer": {
@@ -1661,7 +1661,7 @@
                     "data_source": {
                       "rpcSearch": {
                         "label": "Lead Desk OS Light ",
-                        "value": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                        "value": "*****"
                       }
                     }
                   },
@@ -1669,7 +1669,7 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "notion2"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
                       "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                     }
@@ -2684,7 +2684,7 @@
                   "version": 1,
                   "parameters": {},
                   "mapper": {
-                    "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"updateNotionOpportunity\",\r\n  \"executionStatus\": \"FAILED\",\r\n  \"errorCode\": \"NOTION_UPDATE_FAILED\",\r\n  \"message\": \"The opportunity could not be updated. No update was confirmed.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                    "body": "{\n  \"success\": false,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"updateNotionOpportunity\",\n  \"executionStatus\": \"FAILED\",\n  \"errorCode\": \"NOTION_UPDATE_FAILED\",\n  \"message\": \"The opportunity could not be updated. No update was confirmed.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                     "status": "200",
                     "headers": [
                       {
@@ -2763,7 +2763,7 @@
               "version": 1,
               "parameters": {},
               "mapper": {
-                "body": "{\r\n  \"success\": true,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"updateNotionOpportunity\",\r\n  \"executionStatus\": \"EXECUTED\",\r\n  \"message\": \"Opportunity updated successfully.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                "body": "{\n  \"success\": true,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"updateNotionOpportunity\",\n  \"executionStatus\": \"EXECUTED\",\n  \"message\": \"Opportunity updated successfully.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                 "status": "200",
                 "headers": [
                   {
@@ -2889,7 +2889,7 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "notion2"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
                       "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                     }
@@ -4412,7 +4412,7 @@
                           "%3Eo%7Do": "{{3.workflow}}"
                         },
                         "select": "list",
-                        "data_source": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                        "data_source": "*****"
                       },
                       "metadata": {
                         "designer": {
@@ -4589,7 +4589,7 @@
                             "__IMTCONN__": {
                               "data": {
                                 "scoped": "true",
-                                "connection": "notion2"
+                                "connection": "SET_MAKE_CONNECTION"
                               },
                               "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                             }
@@ -5578,7 +5578,7 @@
                       "version": 1,
                       "parameters": {},
                       "mapper": {
-                        "body": "{\r\n  \"success\": true,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"createNotionOpportunity\",\r\n  \"executionStatus\": \"EXECUTED\",\r\n  \"message\": \"Opportunity created successfully.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                        "body": "{\n  \"success\": true,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"createNotionOpportunity\",\n  \"executionStatus\": \"EXECUTED\",\n  \"message\": \"Opportunity created successfully.\",\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
                         "headers": [
                           {
@@ -5671,7 +5671,7 @@
                         ]
                       },
                       "mapper": {
-                        "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"createNotionOpportunity\",\r\n  \"executionStatus\": \"REJECTED\",\r\n  \"errorCode\": \"OPPORTUNITY_ALREADY_EXISTS\",\r\n  \"message\": \"An opportunity with the exact lead code already exists. No record was created.\",\r\n  \"matchCount\": 1,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                        "body": "{\n  \"success\": false,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"createNotionOpportunity\",\n  \"executionStatus\": \"REJECTED\",\n  \"errorCode\": \"OPPORTUNITY_ALREADY_EXISTS\",\n  \"message\": \"An opportunity with the exact lead code already exists. No record was created.\",\n  \"matchCount\": 1,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
                         "headers": [
                           {
@@ -5764,7 +5764,7 @@
                         ]
                       },
                       "mapper": {
-                        "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"createNotionOpportunity\",\r\n  \"executionStatus\": \"REJECTED\",\r\n  \"errorCode\": \"DUPLICATE_LEAD_CODE\",\r\n  \"message\": \"Multiple opportunities matched the exact lead code. No record was created.\",\r\n  \"matchCount\": 2,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                        "body": "{\n  \"success\": false,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"createNotionOpportunity\",\n  \"executionStatus\": \"REJECTED\",\n  \"errorCode\": \"DUPLICATE_LEAD_CODE\",\n  \"message\": \"Multiple opportunities matched the exact lead code. No record was created.\",\n  \"matchCount\": 2,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
                         "headers": [
                           {
@@ -5874,7 +5874,7 @@
                   ]
                 ],
                 "select": "data_source_item",
-                "data_source": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                "data_source": "*****"
               },
               "metadata": {
                 "designer": {
@@ -5894,7 +5894,7 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "notion2"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
                       "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                     }
@@ -7405,8 +7405,8 @@
                         ]
                       },
                       "mapper": {
-                        "body": "{\r\n  \"success\": true,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"getNotionOpportunity\",\r\n  \"executionStatus\": \"EXECUTED\",\r\n  \"message\": \"Opportunity retrieved successfully.\",\r\n  \"matchCount\": 1,\r\n  \"matches\": {{16.array}},\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
+                        "body": "{\n  \"runtimePermit\":\"{{3.runtimePermit}}\",\n  \"permitFingerprint\":\"{{3.permitFingerprint}}\",\r\n  \"success\": true,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"getNotionOpportunity\",\r\n  \"executionStatus\": \"EXECUTED\",\r\n  \"message\": \"Opportunity retrieved successfully.\",\r\n  \"matchCount\": 1,\r\n  \"matches\": {{16.array}}\r\n}",
                         "headers": [
                           {
                             "key": "Content-Type",
@@ -7434,10 +7434,10 @@
                             "name": "status",
                             "type": "uinteger",
                             "label": "Status",
-                            "required": true,
                             "validate": {
                               "min": 100
-                            }
+                            },
+                            "required": true
                           },
                           {
                             "name": "body",
@@ -7446,11 +7446,16 @@
                           },
                           {
                             "name": "headers",
+                            "type": "array",
+                            "label": "Custom headers",
+                            "validate": {
+                              "maxItems": 16
+                            },
                             "spec": [
                               {
                                 "name": "key",
-                                "type": "text",
                                 "label": "Key",
+                                "type": "text",
                                 "required": true,
                                 "validate": {
                                   "max": 256
@@ -7458,19 +7463,14 @@
                               },
                               {
                                 "name": "value",
-                                "type": "text",
                                 "label": "Value",
+                                "type": "text",
                                 "required": true,
                                 "validate": {
                                   "max": 4096
                                 }
                               }
-                            ],
-                            "type": "array",
-                            "label": "Custom headers",
-                            "validate": {
-                              "maxItems": 16
-                            }
+                            ]
                           }
                         ],
                         "advanced": true
@@ -7498,7 +7498,7 @@
                         ]
                       },
                       "mapper": {
-                        "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"getNotionOpportunity\",\r\n  \"executionStatus\": \"FAILED\",\r\n  \"errorCode\": \"NOT_FOUND\",\r\n  \"message\": \"No opportunity was found for the exact lead code.\",\r\n  \"matchCount\": 0,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                        "body": "{\n  \"success\": false,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"getNotionOpportunity\",\n  \"executionStatus\": \"FAILED\",\n  \"errorCode\": \"NOT_FOUND\",\n  \"message\": \"No opportunity was found for the exact lead code.\",\n  \"matchCount\": 0,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
                         "headers": [
                           {
@@ -7591,7 +7591,7 @@
                         ]
                       },
                       "mapper": {
-                        "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{3.executionId}}\",\r\n  \"action\": \"getNotionOpportunity\",\r\n  \"executionStatus\": \"REJECTED\",\r\n  \"errorCode\": \"DUPLICATE_LEAD_CODE\",\r\n  \"message\": \"More than one opportunity matched the exact lead code. No record was selected.\",\r\n  \"matchCount\": 2,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
+                        "body": "{\n  \"success\": false,\n  \"executionId\": \"{{3.executionId}}\",\n  \"action\": \"getNotionOpportunity\",\n  \"executionStatus\": \"REJECTED\",\n  \"errorCode\": \"DUPLICATE_LEAD_CODE\",\n  \"message\": \"More than one opportunity matched the exact lead code. No record was selected.\",\n  \"matchCount\": 2,\n  \"runtimePermit\": \"{{3.runtimePermit}}\",\n  \"permitFingerprint\": \"{{3.permitFingerprint}}\"\n}",
                         "status": "200",
                         "headers": [
                           {

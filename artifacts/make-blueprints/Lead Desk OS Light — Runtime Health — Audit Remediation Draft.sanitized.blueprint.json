@@ -6,7 +6,7 @@
       "module": "gateway:CustomWebHook",
       "version": 1,
       "parameters": {
-        "hook": 2702859,
+        "hook": "SET_MAKE_WEBHOOK_ID",
         "maxResults": 1
       },
       "mapper": {},
@@ -18,10 +18,10 @@
         "restore": {
           "parameters": {
             "hook": {
+              "label": "Audit Remediation — Runtime Health",
               "data": {
                 "editable": "true"
-              },
-              "label": "Lead Desk OS Light — Runtime Health"
+              }
             }
           }
         },
@@ -36,28 +36,6 @@
             "name": "maxResults",
             "type": "number",
             "label": "Maximum number of results"
-          }
-        ],
-        "interface": [
-          {
-            "name": "requestedAt",
-            "type": "text"
-          },
-          {
-            "name": "executionId",
-            "type": "text"
-          },
-          {
-            "name": "artifactId",
-            "type": "text"
-          },
-          {
-            "name": "action",
-            "type": "text"
-          },
-          {
-            "name": "manifestSha256",
-            "type": "text"
           }
         ]
       }
@@ -103,7 +81,7 @@
                     },
                     {
                       "a": "{{2.manifestSha256}}",
-                      "b": "fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf",
+                      "b": "API_KEY",
                       "o": "text:equal"
                     },
                     {
@@ -118,7 +96,7 @@
                 ]
               },
               "mapper": {
-                "data_source": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                "data_source": "DATA_SOURCE"
               },
               "metadata": {
                 "designer": {
@@ -130,7 +108,7 @@
                     "data_source": {
                       "rpcSearch": {
                         "label": "Lead Desk OS Light ",
-                        "value": "3aaeed1d-2878-80cd-b32c-000b02699e8a"
+                        "value": "CODE"
                       }
                     }
                   },
@@ -138,7 +116,7 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "notion2"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
                       "label": "Mo's Notion Public connection (Mo Elsayed’s Space)"
                     }
@@ -828,7 +806,7 @@
                 "__IMTCONN__": 10151072
               },
               "mapper": {
-                "calendar": "de751367998c764205dc004f65b68ab1ebf3d64613cc3bed72182cf94af5b797@group.calendar.google.com"
+                "calendar": "*****@group.calendar.google.com"
               },
               "metadata": {
                 "designer": {
@@ -846,9 +824,9 @@
                     "__IMTCONN__": {
                       "data": {
                         "scoped": "true",
-                        "connection": "google"
+                        "connection": "SET_MAKE_CONNECTION"
                       },
-                      "label": "Lead Desk OS Light - Google Calendar (mohmoh.wahba@gmail.com)"
+                      "label": "Lead Desk OS Light - Google Calendar (SET_ACCOUNT_EMAIL)"
                     }
                   }
                 },
@@ -962,7 +940,7 @@
                 "conditions": []
               },
               "mapper": {
-                "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{2.executionId}}\",\r\n  \"action\": \"{{2.action}}\",\r\n  \"runtimeStatus\": \"NOT_READY\",\r\n  \"errorCode\": \"INVALID_RUNTIME_REQUEST\",\r\n  \"message\": \"Runtime initialization request failed validation.\",\r\n  \"artifactId\": \"2026-08-14-a75f0495\",\r\n  \"manifestSha256\": \"fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf\",\r\n  \"checks\": {\r\n    \"notion\": \"NOT_CHECKED\",\r\n    \"calendar\": \"NOT_CHECKED\"\r\n  }\r\n}",
+                "body": "{\r\n  \"success\": false,\r\n  \"executionId\": \"{{2.executionId}}\",\r\n  \"action\": \"{{2.action}}\",\r\n  \"runtimeStatus\": \"NOT_READY\",\r\n  \"errorCode\": \"INVALID_RUNTIME_REQUEST\",\r\n  \"message\": \"Runtime initialization request failed validation.\",\r\n  \"artifactId\": \"2026-08-14-a75f0495\",\r\n  \"manifestSha256\": \"KEY_\",\r\n  \"checks\": {\r\n    \"notion\": \"NOT_CHECKED\",\r\n    \"calendar\": \"NOT_CHECKED\"\r\n  }\r\n}",
                 "status": "200",
                 "headers": [
                   {
