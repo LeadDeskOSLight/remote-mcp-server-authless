@@ -9,7 +9,6 @@
 		"lint:fix": "oxlint --fix",
 		"start": "wrangler dev",
 		"validate:operating-context": "node scripts/validate-operating-context.mjs",
-		"validate:runtime-artifact": "node scripts/validate-runtime-artifact.mjs",
 		"cf-typegen": "wrangler types",
 		"type-check": "tsc --noEmit",
 		"test": "node --experimental-strip-types --test tests/*.test.ts"
