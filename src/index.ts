@@ -1098,8 +1098,12 @@ if (afterUpdate.matchCount !== 1 || !afterUpdate.opportunity ||
     inputSchema: z.object({
       requestedOperatingMode: z.literal("PRODUCTION"),
       clientTimeZone: z.literal("America/Los_Angeles"),
-      installationChallenge: z.string().optional(),
-      contextAttestation: contextAttestationSchema.optional(),
+      installationChallenge: z.string().min(1).describe(
+        "Opaque challenge returned by the first initialization call. Supply it unchanged on the second call after installing the complete Operating Context.",
+      ).optional(),
+      contextAttestation: contextAttestationSchema.describe(
+        "All six exact Operating Context installation attestations. Required with installationChallenge on the second initialization call.",
+      ).optional(),
     }),
   },
     async ({ requestedOperatingMode, clientTimeZone, installationChallenge, contextAttestation }) => {
