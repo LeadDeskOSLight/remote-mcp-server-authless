@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   installCapabilityPermitReceipt,
@@ -89,4 +90,21 @@ test("permit receipt installation is idempotent", () => {
   installCapabilityPermitReceipt(capability);
   assert.equal((capability.mapper.body.match(/"runtimePermit"/g) ?? []).length, 1);
   assert.equal((capability.mapper.body.match(/"permitFingerprint"/g) ?? []).length, 1);
+});
+
+test("Runtime Health blueprint pins the current public runtime identity", () => {
+  const blueprint = readFileSync(
+    new URL(
+      "../artifacts/make-blueprints/Lead Desk OS Light — Runtime Health — Audit Remediation Draft.sanitized.blueprint.json",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.ok(blueprint.includes('"b": "2026-08-20-758b14b0"'));
+  assert.ok(
+    blueprint.includes(
+      '"b": "1c22a7c19dd3be74f27b5c30b39522f21dad81f1bd023cc22cfb2b174d4a22f1"',
+    ),
+  );
+  assert.ok(!blueprint.includes("2026-08-14-a75f0495"));
 });

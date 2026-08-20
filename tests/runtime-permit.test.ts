@@ -41,4 +41,3 @@ test("context challenge is signed, expiring, and bound to the current artifacts"
   assert.equal(await validateContextChallenge(challenge, secret, new Date(now.getTime() + 1_000)), true);
   assert.equal(await validateContextChallenge(challenge, secret, new Date(now.getTime() + 601_000)), false);
 });
-

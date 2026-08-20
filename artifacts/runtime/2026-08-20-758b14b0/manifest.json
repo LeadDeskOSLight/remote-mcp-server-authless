@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 2,
+  "artifactId": "2026-08-20-758b14b0",
+  "artifactType": "release-candidate-cloudflare-worker-runtime",
+  "generatedAt": "2026-08-20T09:45:35-07:00",
+  "source": {
+    "repository": "LeadDeskOSLight/remote-mcp-server-authless",
+    "commitSha": "758b14b0ce0e2ee020fae3269e22cc7ece123e6c",
+    "treeSha": "fa1e2cf09e402ea05a9829f34b7cadcbccb5725b",
+    "commitMessage": "Refresh validated Make remediation blueprints",
+    "committedAt": "2026-08-20T09:45:35-07:00",
+    "branchAtCertification": "audit/runtime-permit-context-readiness"
+  },
+  "runtime": {
+    "platform": "Cloudflare Workers",
+    "entrypoint": "src/index.ts",
+    "workerName": "remote-mcp-server-authless",
+    "compatibilityDate": "2026-07-02",
+    "compatibilityFlags": [
+      "nodejs_compat"
+    ]
+  },
+  "reproducibility": {
+    "level": "source-and-lockfile-pinned",
+    "dependencyLockfile": "package-lock.json",
+    "note": "This immutable release-candidate commit contains all functional runtime changes. The following certification commit pins the calculated manifest identity in src/runtime-permit.ts and may add non-runtime validation files or formatting-only changes."
+  },
+  "files": {
+    "src/index.ts": {
+      "sha256": "6d37f4135ee428eb99211e234a09329901ac60e2050f4d5f9f88e2fb1deb6b24",
+      "githubBlobSha": "9a415ee87b3e1b9187158c77ffa13f5ce7808ca2",
+      "bytes": 46304,
+      "archivePath": "source/src/index.ts"
+    },
+    "src/runtime-permit.ts": {
+      "sha256": "7b0c18e89c589e8c23d92a2c38b0391dc04771b85f75d2af8341007a40c99996",
+      "githubBlobSha": "51e67586d3a2c0666c244b641765400adedfd423",
+      "bytes": 8903,
+      "archivePath": "source/src/runtime-permit.ts"
+    },
+    "src/calendar-time.ts": {
+      "sha256": "21b021895dcec17b30b90856c713cde1ec950b431487d09884119befe7d0a706",
+      "githubBlobSha": "3010e29507e22c0a04eea8ce932cc9f652a4c373",
+      "bytes": 1243,
+      "archivePath": "source/src/calendar-time.ts"
+    },
+    "package.json": {
+      "sha256": "3f4cf6e9c2950c7ec88c63265f7753b071069ba6e1a819c834c3cd22d74240d7",
+      "githubBlobSha": "677e5236fd981342504f3672a45a8297e1c84720",
+      "bytes": 724,
+      "archivePath": "source/package.json"
+    },
+    "package-lock.json": {
+      "sha256": "ea510b5c0a3b2ab0da583ced6b40c3041a128915c192db8ab73d1c3a5f1e18cc",
+      "githubBlobSha": "2b8060eeb15415ffd513d85ef183c53e756dbf24",
+      "bytes": 163317,
+      "archivePath": "source/package-lock.json"
+    },
+    "wrangler.jsonc": {
+      "sha256": "3a17fcba19531298806e8ec82b70e4e94f15a287e1b8b2021b5e506ab35b1a9c",
+      "githubBlobSha": "cb7e2bfe28c13d2a082617d86a7ff011ed849b06",
+      "bytes": 538,
+      "archivePath": "source/wrangler.jsonc"
+    },
+    "tsconfig.json": {
+      "sha256": "b0d52ef1c906fd201a0efca9bc4cacefcbf84c75d03ce89f3e4bcc05e14525d7",
+      "githubBlobSha": "a5936d8d7d0ef9928a5aa85f4e3d737ac0f59e0b",
+      "bytes": 445,
+      "archivePath": "source/tsconfig.json"
+    }
+  },
+  "previousManifestSha256": "fb54d7c6823a945b4ddbd6e8b87803ef64d672390f48fbb389327f53d6956baf",
+  "chainSequence": 2
+}

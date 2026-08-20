@@ -20,7 +20,7 @@ export function sanitize(value, key = "") {
     return "SET_MAKE_GATEWAY_KEY";
   }
   return value
-    .replace(/(?<=\"x-make-apikey\"\s*:\s*\")[^\"]+(?=\")/gi, "SET_MAKE_GATEWAY_KEY")
+    .replace(/(?<="x-make-apikey"\s*:\s*")[^"]+(?=")/gi, "SET_MAKE_GATEWAY_KEY")
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "SET_ACCOUNT_EMAIL");
 }
 
